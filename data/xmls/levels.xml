@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<resources>
+	<set path = "images" />
+	<atlas>
+		<image file="level-0.jpg" />
+	</atlas>
+	<atlas>
+		<image file="level-1.png" />
+	</atlas>
+	<atlas>
+		<image file="level-2.png" />
+	</atlas>
+	<atlas>
+		<image file="level-3.jpg" />
+	</atlas>
+	<atlas>
+		<image file="level-4.jpg" />
+	</atlas>
+	<atlas>
+		<image file="level-5.jpg" />
+	</atlas>
+	<atlas>
+		<image file="level-6.jpg" />
+	</atlas>
+	<atlas>
+		<image file="level-7.jpg" />
+	</atlas>
+</resources>

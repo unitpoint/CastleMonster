@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<resources>
+	<set path = "images" />
+	<atlas>
+		<image file="joystick.png" />
+		<image file="finger.png" />
+		<image file="player-1.png" cols="20" />
+		<image file="player-2.png" cols="20" />
+		<image file="player-3.png" cols="20" />
+		<image file="player-4.png" cols="20" />
+	</atlas>
+
+	<set path = "fonts" />
+	<font file="normal.fnt"/>
+	<font id="big" file="huge.fnt"/>
+</resources>
