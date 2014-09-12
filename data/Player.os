@@ -24,7 +24,8 @@ Player = extends Entity {
 			// angularDamping = 1.0,
 			categoryBits = PHYS_CAT_BIT_PLAYER,
 			ignoreBits = PHYS_CAT_BIT_PLAYER_FIRE | PHYS_CAT_BIT_BLOOD 
-				| PHYS_CAT_BIT_MONSTER_AREA | PHYS_CAT_BIT_PLAYER_SPAWN,
+				| PHYS_CAT_BIT_MONSTER_SPAWN | PHYS_CAT_BIT_MONSTER_AREA 
+				| PHYS_CAT_BIT_PLAYER_SPAWN,
 			
 			minSpeed: 0,
 			maxSpeed: @originSpeed,
@@ -46,6 +47,7 @@ Player = extends Entity {
 				ignoreBits: cm.physics.CAT_BIT_ALL & ~cm.physics.CAT_BIT_MONSTER
 			}*/ ]
 		}
+		print "ignoreBits: "..@physics.ignoreBits
 		level.initEntityPhysics(this)
 		@setMaxSpeed(130)
 	},

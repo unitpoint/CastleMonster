@@ -74,8 +74,7 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
-		@initLevel("level-3")
-		@createPhysicsWorld(@view.size)
+		@initLevelPhysics("level-3")
 		
 		@ui = Actor().attrs {
 			priority = 10,
@@ -99,20 +98,21 @@ GameLevel = extends BaseGameLevel {
 		
 		@keyPressed = {}
 		var function keyboardEvent(ev){
+			var pressed = ev.type == KeyboardEvent.DOWN
 			if(ev.scancode == KeyboardEvent.SCANCODE_LEFT || ev.scancode == KeyboardEvent.SCANCODE_A){
-				@keyPressed.left = ev.type == KeyboardEvent.DOWN
+				@keyPressed.left = pressed
 				return
 			}
 			if(ev.scancode == KeyboardEvent.SCANCODE_RIGHT || ev.scancode == KeyboardEvent.SCANCODE_D){
-				@keyPressed.right = ev.type == KeyboardEvent.DOWN
+				@keyPressed.right = pressed
 				return
 			}
 			if(ev.scancode == KeyboardEvent.SCANCODE_UP || ev.scancode == KeyboardEvent.SCANCODE_W){
-				@keyPressed.up = ev.type == KeyboardEvent.DOWN
+				@keyPressed.up = pressed
 				return
 			}
 			if(ev.scancode == KeyboardEvent.SCANCODE_DOWN || ev.scancode == KeyboardEvent.SCANCODE_S){
-				@keyPressed.down = ev.type == KeyboardEvent.DOWN
+				@keyPressed.down = pressed
 				return
 			}
 		}
@@ -122,7 +122,7 @@ GameLevel = extends BaseGameLevel {
 		@addUpdate(@update.bind(this))
 	},
 	
-	initLevel = function(name){
+	initLevelPhysics = function(name){
 		var tiledMap = json.decode(File.readContents(name..".json"))
 		// print "tiledMap: "..tiledMap
 		
@@ -136,7 +136,6 @@ GameLevel = extends BaseGameLevel {
 				break;
 			}
 		}
-		
 		for(var i = 0; i < #tiledMap.layers; i++){
 			var layer = tiledMap.layers[i]
 			layer.name == "physics" || continue
@@ -160,36 +159,19 @@ GameLevel = extends BaseGameLevel {
 				}
 			}
 		}
-		
-	},
-	
-	movePlayer = function(dir){
-		@player.pos += dir
-		
-		var curTime = getCurTime()
-		var dt = curTime - @player.moveTime
-		@player.speed = #(dir / (dt == 0 ? 0.001 : dt))
-		@player.moveTime = curTime
-		
-		@player.updateAnimToDir(dir.normalize())
+		@createPhysicsWorld(@view.size)
 	},
 	
 	updateCamera: function(ev){
-		if(!@player){
-			return
-		}
-		
-		var playerPos = @player.pos
-		var center = @size / 2
-		var idealPos = center - playerPos
+		var idealPos = @size / 2 - @player.pos
 		var pos = @view.pos
 		var move = (idealPos - pos) * (ev.dt / 0.6)
-		move.x, move.y = math.round(move.x), math.round(move.y)
+		// move.x, move.y = math.round(move.x), math.round(move.y)
 		
 		pos += move
 		// pos = cm.roundPoint(pos);
 		
-		var maxOffs = math.round(@width * 0.05)
+		var maxOffs = @width * 0.05 // math.round(@width * 0.05)
 		if(idealPos.x - pos.x > maxOffs){
 			pos.x = idealPos.x - maxOffs
 		}else if(idealPos.x - pos.x < -maxOffs){
@@ -218,32 +200,13 @@ GameLevel = extends BaseGameLevel {
 			pos.y = @height - @view.height
 		}
 
-		pos.x = math.round(pos.x) // * @view.scaleX);
-		pos.y = math.round(pos.y) // * @view.scaleY);
+		// pos.x = math.round(pos.x) // * @view.scaleX);
+		// pos.y = math.round(pos.y) // * @view.scaleY);
 		
 		@view.pos = pos
 	},
 	
 	update = function(ev){
-		/* if(@moveJoystick.active){
-			var force = @moveJoystick.dir * @player.physics.forcePower
-			print "moveJoystick force: ${force}"
-			// @movePlayer(@moveJoystick.dir * (ev.dt * 5))
-			@player.applyForce(force)
-		}else{
-			var dx, dy = 0, 0
-			if(@keyPressed.left) dx--
-			if(@keyPressed.right) dx++
-			if(@keyPressed.up) dy--
-			if(@keyPressed.down) dy++
-			if(dx != 0 || dy != 0){
-				var force = vec2(dx, dy).normalize() * (@player.physics.forcePower * 0.8)
-				print "keyboard force: ${force}"
-				// @movePlayer(vec2(dx, dy).normalizeTo(100) * (ev.dt * 3.5))
-				@player.applyForce(force)
-			}
-		} */
-		
 		@updatePhysics(ev.dt)
 		@updateCamera(ev)
 		@player.update(ev)

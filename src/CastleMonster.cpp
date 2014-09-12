@@ -48,19 +48,6 @@ static void registerBaseGameLevel(OS * os)
 		{
 			return new BaseGameLevel();
 		}
-
-		static int initEntityPhysics(OS * os, int params, int, int, void*)
-		{
-			OS_GET_SELF(BaseGameLevel*);
-			BaseEntity * ent = CtypeValue<BaseEntity*>::getArg(os, -params+0);
-			if(!ent){
-				os->setException("BaseEntity required");
-				os->handleException();
-				return 0;
-			}
-			self->initEntityPhysics(ent);
-			return 0;
-		}
 	};
 
 	OS::FuncDef funcs[] = {
@@ -69,7 +56,8 @@ static void registerBaseGameLevel(OS * os)
 		def("updatePhysics", &BaseGameLevel::updatePhysics),
 		def("setPhysSize", &BaseGameLevel::setPhysSize),
 		def("setPhysCell", &BaseGameLevel::setPhysCell),
-		{"initEntityPhysics", &Lib::initEntityPhysics},
+		def("initEntityPhysics", &BaseGameLevel::initEntityPhysics),
+		def("destroyEntityPhysics", &BaseGameLevel::destroyEntityPhysics),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -467,6 +455,11 @@ float getOSActorPhysicsFloat(Actor * actor, const char * name, float def)
 	return os->toFloat(-1, def);
 }
 
+int getOSActorPhysicsInt(Actor * actor, const char * name, int def)
+{
+	return (int)getOSActorPhysicsFloat(actor, name, (int)def);
+}
+
 bool getOSActorPhysicsBool(Actor * actor, const char * name, bool def)
 {
 	ObjectScript::OS * os = ObjectScript::os;
@@ -537,14 +530,11 @@ void BaseGameLevel::addEntityPhysicsShapes(BaseEntity * ent)
 		fixtureDef.restitution = (os->getProperty(-1, "restitution"), os->popFloat(PHYS_DEF_RESTITUTION));
 		fixtureDef.friction = (os->getProperty(-1, "friction"), os->popFloat(PHYS_DEF_FRICTION));
 		fixtureDef.isSensor = (os->getProperty(-1, "sensor"), os->popBool(false));
-		fixtureDef.filter.categoryBits = (os->getProperty(-1, "categoryBits"), os->popInt(fixtureDef.filter.categoryBits));
-		fixtureDef.filter.maskBits = (os->getProperty(-1, "maskBits"), os->popInt(fixtureDef.filter.maskBits));
-
-		os->getProperty(-1, "ignoreBits");
-		if(!os->isNull()){
-			fixtureDef.filter.maskBits &= ~ os->toInt();
-		}
-		os->pop();
+		fixtureDef.filter.categoryBits = (os->getProperty(-1, "categoryBits"), os->popInt(ent->getPhysicsInt("categoryBits", fixtureDef.filter.categoryBits)));
+		fixtureDef.filter.maskBits = (os->getProperty(-1, "maskBits"), os->popInt(ent->getPhysicsInt("maskBits", fixtureDef.filter.maskBits)));
+		
+		int ignoreBits = (os->getProperty(-1, "ignoreBits"), os->popInt(ent->getPhysicsInt("ignoreBits", 0)));
+		fixtureDef.filter.maskBits &= ~ ignoreBits;
 
 		os->getProperty(-1, "fly");
 		if(os->toBool()){

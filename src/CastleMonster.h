@@ -78,6 +78,7 @@ class BaseGameLevel;
 Actor * getOSActor(Actor * actor, const char * name);
 float getOSActorFloat(Actor * actor, const char * name, float def);
 float getOSActorPhysicsFloat(Actor * actor, const char * name, float def);
+int getOSActorPhysicsInt(Actor * actor, const char * name, int def);
 bool getOSActorPhysicsBool(Actor * actor, const char * name, bool def);
 
 DECLARE_SMART(BaseEntity, spBaseEntity);
@@ -112,6 +113,19 @@ public:
 	void setAngularDamping(float a)
 	{
 		if(body) body->SetAngularDamping(a);
+	}
+
+	float getPhysicsFloat(const char * name, float def)
+	{
+		return getOSActorPhysicsFloat(this, name, def);
+	}
+	int getPhysicsInt(const char * name, int def)
+	{
+		return getOSActorPhysicsInt(this, name, def);
+	}
+	bool getPhysicsBool(const char * name, bool def)
+	{
+		return getOSActorPhysicsBool(this, name, def);
 	}
 };
 
