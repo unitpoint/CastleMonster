@@ -14,7 +14,7 @@ Entity = extends BaseEntity {
 		time = 0,
 		aimTime = 0,
 		aimInverse = false,
-		dirIndex = DIR_DOWN,
+		dirIndex = DIR_RIGHT_UP,
 		dirChangeTime = 0,
 		animSpeed = -1,
 		animUpdateHandle = null,
@@ -151,6 +151,16 @@ Entity = extends BaseEntity {
 			actor.dirIndex = cm.DIR_DOWN;
 			actor.isRunning = null;
 		} */
+		if(this == level.player){
+			switch(dirIndex){
+			case DIR_LEFT:
+				dirIndex = DIR_LEFT_DOWN
+				break
+			case DIR_RIGHT:
+				dirIndex = DIR_RIGHT_DOWN
+				break
+			}
+		}
 		if(dirIndex == DIR_STAY || @time - @dirChangeTime < 0.2){
 			// print "use cur dirIndex: ${@dirIndex}, time: ${@time}, dirChangeTime: ${@dirChangeTime}"
 			dirIndex = @dirIndex

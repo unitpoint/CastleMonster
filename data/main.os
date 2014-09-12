@@ -16,5 +16,13 @@ function getCurTime(){
 	return DateTime.now().comtime
 }
 
-GameLevel().attachTo(stage)
+function clamp(a, min, max){
+	return a < min ? min : a > max ? max : a
+}
+
+TEST_LEVEL_INVASION = 3
+INVASION_COUNT = 30
+DAY_COUNT = 30
+
+GameLevel(3, 1, 1).attachTo(stage)
 

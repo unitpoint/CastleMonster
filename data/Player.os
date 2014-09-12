@@ -10,7 +10,7 @@ Player = extends Entity {
 		super(level)
 		@attrs {
 			resAnim = res.getResAnim("player-1"),
-			parent = level.view,
+			parent = level.layers[LAYER.PLAYER],
 			pos = vec2(300, 370),
 			pivot = vec2(0.5, 0.5),
 		}

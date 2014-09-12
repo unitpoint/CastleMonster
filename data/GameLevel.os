@@ -1,3 +1,23 @@
+var enumVal
+LAYER = {
+	__dummy__ 			= enumVal = 0,
+	UNDER_FLOOR 		= enumVal++, 
+	FLOOR 				= enumVal++,
+	MONSTER_SPAWN_AREA 	= enumVal++,
+	PLAYER_SPAWN_AREA 	= enumVal++,
+	FLOOR_DECALS 		= enumVal++,
+	WALLS 				= enumVal++,
+	PATH 				= enumVal++,
+	BLOOD 				= enumVal++,
+	POWERUPS 			= enumVal++,
+	MONSTERS 			= enumVal++,
+	PLAYER 				= enumVal++,
+	MONSTER_BULLETS 	= enumVal++,
+	EFFECTS 			= enumVal++,
+	PHYSICS_DEBUG 		= enumVal++,
+	COUNT 				= enumVal				
+}
+			
 GameLevel = extends BaseGameLevel {
 	__object = {
 		playerData = {
@@ -56,15 +76,23 @@ GameLevel = extends BaseGameLevel {
 				weaponFireType = 0
 			}
 		},
+		wave = {},
 
 		paused = false,
 	},
 	
-	__construct = function(){
+	__construct = function(p_level, p_invasion, p_day){
 		super()
 		@size = stage.size
 		
-		@levelName = "level-3"
+		@params = {
+			// dayParams = dayParams,
+			level = p_level,
+			invasion = p_invasion,
+			day = p_day,
+		}
+		
+		@levelName = "level-"..@params.level
 		@view = Sprite().attrs {
 			// name = "view",
 			priority = 0,
@@ -74,6 +102,14 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
+		@layers = []
+		for(var i = 0; i < LAYER.COUNT; i++){
+			@layers[] = Actor().attrs {
+				priority = i,
+				parent = @view,
+			}
+		}
+		
 		@initLevelPhysics("level-3")
 		
 		@ui = Actor().attrs {
@@ -120,6 +156,71 @@ GameLevel = extends BaseGameLevel {
 		@addEventListener(KeyboardEvent.UP, keyboardEvent.bind(this))
 		
 		@addUpdate(@update.bind(this))
+		
+		// @activateItem(@playerData.defaultWeaponItem)
+		// @activateItem(@playerData.armorItem)
+		
+		var dayParams = @getDayParams(@params.level, @params.invasion, @params.day)
+		print "loaded dayParams: "..dayParams
+		@applyDayParams(dayParams)
+		// @startWave(day, 0)
+	},
+	
+	getDayParams = function(level, invasion, day){
+		return DayParams(level, invasion, day).day_params
+	},
+	
+	getMonsterByName = function(name){
+		return {
+			name = name
+		}
+	},
+	
+	applyDayParams = function(dayParams){
+		// if(!dayParams) dayParams = {};
+
+		var params
+		params = @wave.params = {} // this.waveParams[0];
+		params.meatPerHealth = math.max(1, dayParams['meat_per_health'] || 1)
+		params.moneyPerArmor = math.max(1, dayParams['money_per_armor'] || 1)
+		params.maxAliveMonsters =  dayParams['max_alive_monsters']
+		params.monsterFireMaxBullets =  dayParams['monster_fire_max_bullets']
+		params.monsterFireMinDistance =  dayParams['monster_fire_min_distance']
+		params.monsterFireIntervalSec =  dayParams['monster_fire_interval_sec']
+		params.monsterFireFrequencyScale =  dayParams['monster_fire_frequency_scale']
+		params.monsterFireDamageScale =  dayParams['monster_fire_damage_scale']
+		params.monsterFireBulletSpeedScale =  dayParams['monster_fire_bullet_speed_scale']
+		params.monsterFireBulletDensityScale =  dayParams['monster_fire_bullet_density_scale']
+		params.monsterSpeedScale =  dayParams['monster_speed_scale']
+		params.monsterHealthScale =  dayParams['monster_health_scale']
+		params.monsterAimOnDamage = dayParams['monster_aim_on_damage']
+		
+		params.phases = []
+		for(local i, dayPhase in dayParams['phases']){
+			var phase = {}
+			
+			phase.count = dayPhase['count']
+			phase.maxAliveMonsters = dayPhase['max_alive_monsters']
+			
+			if(dayPhase['next']){
+				phase.next = {
+					delaySec = dayPhase['next']['delay_sec'],
+					aliveMonsters = dayPhase['next']['alive_monsters']
+				}					
+			}
+			
+			if(dayPhase['monster'] is String){
+				phase.monster = [ @getMonsterByName(dayPhase['monster']) ]
+			}else{
+				phase.monster = []
+				for(local i, name in dayPhase['monster']){
+					phase.monster[] = @getMonsterByName(name)
+				}
+			}
+			params.phases[] = phase
+		}
+
+		print('day params ', params)
 	},
 	
 	initLevelPhysics = function(name){
@@ -165,7 +266,7 @@ GameLevel = extends BaseGameLevel {
 	updateCamera: function(ev){
 		var idealPos = @size / 2 - @player.pos
 		var pos = @view.pos
-		var move = (idealPos - pos) * (ev.dt / 0.6)
+		var move = (idealPos - pos) * ev.dt
 		// move.x, move.y = math.round(move.x), math.round(move.y)
 		
 		pos += move
