@@ -14,12 +14,25 @@ LOCAL_SRC_FILES += ../../../../../objectscript/src/ox-binder.cpp
 
 LOCAL_SRC_FILES += ../../../src/example.cpp ../../../src/entry_point.cpp 
 LOCAL_SRC_FILES += ../../../src/CastleMonster.cpp
+LOCAL_SRC_FILES += ../../../src/Box2DDebugDraw.cpp
+
+LOCAL_SRC_FILES += \
+				$(subst $(LOCAL_PATH)/,, \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Collision/Shapes/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Collision/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Common/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Dynamics/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Dynamics/Contacts/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Dynamics/Joints/*.cpp) \
+				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Rope/*.cpp) \
+				)
 
 LOCAL_STATIC_LIBRARIES := oxygine-framework_static
 LOCAL_SHARED_LIBRARIES := SDL2
 
 LOCAL_CFLAGS += -DOX_WITH_OBJECTSCRIPT
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../../../../objectscript/src
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../../Box2D
 
 LOCAL_EXPORT_C_INCLUDES += $(LOCAL_C_INCLUDES)
 LOCAL_EXPORT_CFLAGS += $(LOCAL_CFLAGS)

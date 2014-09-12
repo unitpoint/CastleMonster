@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <memory.h>
 #include <stddef.h>
+#include <string.h> // added for android by Evgeniy Golovin
 
 int32 b2BlockAllocator::s_blockSizes[b2_blockSizes] = 
 {

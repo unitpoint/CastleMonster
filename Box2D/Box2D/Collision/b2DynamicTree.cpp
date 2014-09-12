@@ -18,6 +18,7 @@
 
 #include <Box2D/Collision/b2DynamicTree.h>
 #include <memory.h>
+#include <string.h> // added for android by Evgeniy Golovin
 
 b2DynamicTree::b2DynamicTree()
 {
