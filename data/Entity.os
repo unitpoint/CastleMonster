@@ -27,6 +27,16 @@ Entity = extends BaseEntity {
 		@level = level
 	},
 	
+	/* __set@x = function(p){
+		super(math.round(p))
+	},
+	__set@y = function(p){
+		super(math.round(p))
+	},
+	__set@pos = function(p){
+		super(vec2(math.round(p.x), math.round(p.y)))
+	}, */
+	
 	playAnim = function(dt, animsMap){
 		var animNum, count = 0, #animsMap
 		@resAnimFrameNum = animsMap[0]

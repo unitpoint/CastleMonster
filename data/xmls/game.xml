@@ -1,16 +1,36 @@
 <?xml version="1.0"?>
 <resources>
-	<set path = "images" />
+	<set path = "../" />
 	<atlas>
-		<image file="joystick.png" />
-		<image file="finger.png" />
-		<image file="player-1.png" cols="20" />
-		<image file="player-2.png" cols="20" />
-		<image file="player-3.png" cols="20" />
-		<image file="player-4.png" cols="20" />
+		<image file="data_debug/images/joystick.png" />
+		<image file="data_debug/images/finger.png" />
+		<image id="players/1" file="data_debug/images/players/1.png" cols="20" />
+		<image id="players/2" file="data_debug/images/players/2.png" cols="20" />
+		<image id="players/3" file="data_debug/images/players/3.png" cols="20" />
+		<image id="players/4" file="data_debug/images/players/4.png" cols="20" />
+		<image file="data_debug/images/blood-player.png" cols="4" rows="4" />
+		<image file="data_debug/images/blood-monster.png" cols="4" rows="4" />
+		
+		<image id="monsters/zmeyacherepaha" file="data_debug/images/monsters/zmeyacherepaha.png" cols="20" />
+		<image id="monsters/wood_elf" file="data_debug/images/monsters/wood_elf.png" cols="20" />
+		<image id="monsters/white_wolf" file="data_debug/images/monsters/white_wolf.png" cols="20" />
+		<image id="monsters/twinkle" file="data_debug/images/monsters/twinkle.png" cols="20" />
+		<image id="monsters/strekoza_cherep" file="data_debug/images/monsters/strekoza_cherep.png" cols="20" />
+		<image id="monsters/skalapendra" file="data_debug/images/monsters/skalapendra.png" cols="20" />
+		<image id="monsters/serenivii" file="data_debug/images/monsters/serenivii.png" cols="20" />
+		<image id="monsters/pumpkin" file="data_debug/images/monsters/pumpkin.png" cols="20" />
+		<image id="monsters/mountain_pangolin" file="data_debug/images/monsters/mountain_pangolin.png" cols="20" />
+		<image id="monsters/little_lemon" file="data_debug/images/monsters/little_lemon.png" cols="20" />
+		<image id="monsters/lion_salamandra" file="data_debug/images/monsters/lion_salamandra.png" cols="20" />
+		<image id="monsters/gryaz" file="data_debug/images/monsters/gryaz.png" cols="20" />
+		<image id="monsters/fishmen" file="data_debug/images/monsters/fishmen.png" cols="20" />
+		<image id="monsters/firicrazy" file="data_debug/images/monsters/firicrazy.png" cols="20" />
+		<image id="monsters/carnivorous_flower" file="data_debug/images/monsters/carnivorous_flower.png" cols="20" />
+		<image id="monsters/blue_bug" file="data_debug/images/monsters/blue_bug.png" cols="20" />
+		<image id="monsters/arbyz" file="data_debug/images/monsters/arbyz.png" cols="20" />
 	</atlas>
 
-	<set path = "fonts" />
-	<font file="normal.fnt"/>
-	<font id="big" file="huge.fnt"/>
+	<set path = "../" />
+	<font file="data_debug/fonts/normal.fnt"/>
+	<font id="big" file="data_debug/fonts/huge.fnt"/>
 </resources>

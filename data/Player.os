@@ -9,7 +9,7 @@ Player = extends Entity {
 	__construct = function(level){
 		super(level)
 		@attrs {
-			resAnim = res.getResAnim("player-1"),
+			resAnim = res.getResAnim("players/1"),
 			parent = level.layers[LAYER.PLAYER],
 			pos = vec2(300, 370),
 			pivot = vec2(0.5, 0.5),
@@ -47,7 +47,6 @@ Player = extends Entity {
 				ignoreBits: cm.physics.CAT_BIT_ALL & ~cm.physics.CAT_BIT_MONSTER
 			}*/ ]
 		}
-		print "ignoreBits: "..@physics.ignoreBits
 		level.initEntityPhysics(this)
 		@setMaxSpeed(130)
 	},

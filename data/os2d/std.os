@@ -406,6 +406,15 @@ function OS2DObject._unregisterAllExternalTweens(){
 	// print "${@classname}#${@__id}._unregisterAllExternalTweens"
 }
 
+function Actor.__len(){
+	return @childrenCount()
+}
+
+function Actor.__get(i){
+	// if(typeOf(i) === "number"){
+	return i is Number ? @childAt(i) : super(i)
+}
+
 function Actor.__get@_internalActions(){
 	@setProperty("_internalActions", {})
 	var self = this
