@@ -30,6 +30,10 @@ static void registerBaseGameGlobals(OS * os)
 		DEF_CONST(PHYS_CAT_BIT_MONSTER_SPAWN),
 		DEF_CONST(PHYS_CAT_BIT_PLAYER_SPAWN),
 		DEF_CONST(PHYS_CAT_BIT_ALL),
+		DEF_CONST(PHYS_WATER),
+		DEF_CONST(PHYS_SOLID),
+		DEF_CONST(PHYS_PLAYER_SPAWN),
+		DEF_CONST(PHYS_MONSTER_SPAWN),
 		{}
 	};
 	os->pushGlobals();
@@ -58,6 +62,9 @@ static void registerBaseGameLevel(OS * os)
 		def("setPhysCell", &BaseGameLevel::setPhysCell),
 		def("initEntityPhysics", &BaseGameLevel::initEntityPhysics),
 		def("destroyEntityPhysics", &BaseGameLevel::destroyEntityPhysics),
+		DEF_PROP(debugDraw, BaseGameLevel, DebugDraw),
+		DEF_GET(physBlockCount, BaseGameLevel, PhysBlockCount),
+		def("getPhysBlock", &BaseGameLevel::getPhysBlock),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -66,6 +73,31 @@ static void registerBaseGameLevel(OS * os)
 	registerOXClass<BaseGameLevel, Actor>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
 bool __registerBaseGameLevel = addRegFunc(registerBaseGameLevel);
+
+// =====================================================================
+
+static void registerPhysBlock(OS * os)
+{
+	struct Lib {
+		static PhysBlock * __newinstance()
+		{
+			return new PhysBlock();
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		// def("__newinstance", &Lib::__newinstance),
+		DEF_GET(pos, PhysBlock, Pos),
+		DEF_GET(size, PhysBlock, Size),
+		DEF_GET(type, PhysBlock, Type),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<PhysBlock, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
+}
+bool __registerPhysBlock = addRegFunc(registerPhysBlock);
 
 // =====================================================================
 
@@ -338,6 +370,16 @@ b2Vec2 toPhysVec(const Vector2 &pos)
 Vector2 fromPhysVec(const b2Vec2 &pos)
 {
 	return Vector2(fromPhysValue(pos.x), fromPhysValue(pos.y));
+}
+
+int BaseGameLevel::getPhysBlockCount() const
+{
+	return physBlocks.size();
+}
+
+spPhysBlock BaseGameLevel::getPhysBlock(int i) const
+{
+	return physBlocks.at(i);
 }
 
 void BaseGameLevel::initPhysBlocks()
@@ -624,7 +666,7 @@ void BaseGameLevel::destroyAllBodies()
 	}
 	b2Body * body = physWorld->GetBodyList(), * next = NULL;
 	for(; body; body = next){
-		b2Body * next = body->GetNext();
+		next = body->GetNext();
 		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)body->GetUserData());
 		if(!ent){
 			continue;
@@ -646,11 +688,11 @@ void BaseGameLevel::updatePhysics(float dt)
 	destroyWaitBodies();
 	physWorld->Step(dt, 6, 2);
 
-	b2Body * body = physWorld->GetBodyList(), * next = NULL;
-	for(; body; body = next){
-		b2Body * next = body->GetNext();
+	b2Body * body = physWorld->GetBodyList();
+	for(; body; body = body->GetNext()){
 		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)body->GetUserData());
 		if(ent){
+			OX_ASSERT(ent->body == body);
 			ent->setPosition(fromPhysVec(body->GetPosition()));
 			ent->setRotation(body->GetAngle());
 		}
@@ -669,13 +711,28 @@ void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
 	physWorld->SetAllowSleeping(true);
 	physWorld->SetDestructionListener(this);
 
-	debugDraw = new Box2DDraw(this);
-	debugDraw->SetFlags(b2Draw::e_shapeBit | b2Draw::e_jointBit | b2Draw::e_pairBit | b2Draw::e_centerOfMassBit);
-	debugDraw->setPriority(10000);
-	debugDraw->attachTo(getView());
-	// debugDraw->setWorld(1/PHYS_SCALE, physWorld);
-
 	initPhysBlocks();
+}
+
+bool BaseGameLevel::getDebugDraw() const
+{
+	return debugDraw;
+}
+
+void BaseGameLevel::setDebugDraw(bool value)
+{
+	if((bool)debugDraw != value){
+		if(value){
+			debugDraw = new Box2DDraw(this);
+			debugDraw->SetFlags(b2Draw::e_shapeBit | b2Draw::e_jointBit | b2Draw::e_pairBit | b2Draw::e_centerOfMassBit);
+			debugDraw->setPriority(10000);
+			debugDraw->attachTo(getView());
+			// debugDraw->setWorld(1/PHYS_SCALE, physWorld);
+		}else{
+			debugDraw->detach();
+			debugDraw = NULL;
+		}
+	}
 }
 
 void BaseGameLevel::drawPhysShape(b2Fixture* fixture, const b2Transform& xf, const b2Color& color)

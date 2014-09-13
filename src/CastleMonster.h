@@ -66,6 +66,10 @@ public:
 	{
 		type = PHYS_UNKNOWN;
 	}
+
+	Vector2 getPos() const { return pos; }
+	Vector2 getSize() const { return size; }
+	EPhysCellType getType() const { return type; }
 };
 
 float toPhysValue(float a);
@@ -151,6 +155,12 @@ public:
 	void destroyEntityPhysics(BaseEntity * ent);
 
 	void updatePhysics(float dt);
+
+	bool getDebugDraw() const;
+	void setDebugDraw(bool value);
+
+	int getPhysBlockCount() const;
+	spPhysBlock getPhysBlock(int i) const;
 
 protected:
 
@@ -254,6 +264,7 @@ struct CtypeValue<b2Vec2>
 OS_DECL_CTYPE_ENUM(EPhysCellType);
 OS_DECL_CTYPE_ENUM(SDL_Scancode);
 // OS_DECL_CTYPE_ENUM(SDL_Keycode);
+OS_DECL_OX_CLASS(PhysBlock);
 OS_DECL_OX_CLASS(BaseGameLevel);
 OS_DECL_OX_CLASS(BaseEntity);
 OS_DECL_OX_CLASS(KeyboardEvent);
