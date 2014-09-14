@@ -28,62 +28,6 @@ ITEM_TYPE_MEDAL = 8
 			
 GameLevel = extends BaseGameLevel {
 	__object = {
-		playerData = {
-			money = 0,
-			meat = 0,
-			enemyKilled = 0,
-			
-			health = 100,
-			armor = 100,
-			
-			healthDamaged = 0,
-			armorDamaged = 0,
-			// damaged = 0,
-			damagedTime = 0,
-			
-			healthRecovered = 0,
-			armorRecovered = 0,
-
-			healthRecoverMeatUsed = 0,
-			armorRecoverMoneyUsed = 0,
-			
-			armorItem = null,
-			defaultWeaponItem = null,
-			
-			// items = {},
-			originItems = {},
-			itemsById = {},
-			itemsByNameId = {},
-			itemsByTypeId = {},
-			
-			killedCountById = {},
-			collectedCountById = {},
-			usedCountById = {},
-			
-			startTimeSec = 0,
-			playTimeSec = 0,
-			daysCompleted = 0,
-			
-			activeItems = {},
-			activeArtefacts = {},
-			activeArmors = {},
-			activeWeapons = {},
-			
-			effects = {
-				scale = {
-					weaponDamage = 1.0,
-					weaponFrequency = 1.0,
-					weaponSpeed = 1.0,
-					weaponDensity = 1.0,
-					playerArmor = 1.0,
-					playerHealth = 1.0,
-					playerSpeed = 1.0,
-					monsterHealth = 1.0,
-					monsterSpeed = 1.0
-				},
-				weaponFireType = 0
-			}
-		},
 		wave: {
 			time: 0,
 			num: 0,
@@ -179,13 +123,13 @@ GameLevel = extends BaseGameLevel {
 		
 		@addUpdate(@update.bind(this))
 		
-		// @activateItem(@playerData.defaultWeaponItem)
-		// @activateItem(@playerData.armorItem)
+		// @activateItem(playerData.defaultWeaponItem)
+		// @activateItem(playerData.armorItem)
 		
 		@loadItems()
 		
 		var dayParams = @getDayParams(@params.level, @params.invasion, @params.day)
-		print "loaded dayParams: "..dayParams
+		// print "loaded dayParams: "..dayParams
 		@applyDayParams(dayParams)
 		@startWave(@params.day, 0)
 	},
@@ -196,9 +140,9 @@ GameLevel = extends BaseGameLevel {
 	
 	getMonsterByName = function(nameId){
 		nameId = 'ITEM_MONSTER_'..nameId.upper()
-		var item = @playerData.itemsByNameId[nameId]
+		var item = playerData.itemsByNameId[nameId]
 		if(item && item.actorParams){
-			print('getMonsterByName '..nameId..' - found')
+			// print('getMonsterByName '..nameId..' - found')
 			return item.actorParams
 		}
 		print('getMonsterByName '..nameId..' - NOT FOUND')
@@ -206,19 +150,20 @@ GameLevel = extends BaseGameLevel {
 
 	getItemByName = function(nameId){
 		nameId = 'ITEM_'..nameId.upper()
-		var item = cm.playerData.itemsByNameId[nameId]
+		var item = playerData.itemsByNameId[nameId]
 		if(item && item.actorParams){
-			print('getItemByName '..nameId..' - found')
+			// print('getItemByName '..nameId..' - found')
 			return item.actorParams
 		}
 		print('getItemByName '..nameId..' - NOT FOUND')
 	},
 	
 	loadItems = function(){
-		print "begin load items"
-		@playerData.originItems = json.decode(File.readContents("items.json"))
+		// var startTimeSec = getTimeSec(); print "begin load items"
+		playerData.originItems = json.decode(File.readContents("items.json"))
+		// var loadedTimeSec = getTimeSec()
 		
-		var playerData, f = @playerData, toNumber
+		var f = toNumber
 		
 		playerData.itemsById = {}
 		playerData.itemsByNameId = {}
@@ -294,8 +239,8 @@ GameLevel = extends BaseGameLevel {
 							maxSpeed = f( originItem['speed'] ),
 							minSpeed = f( originItem['speed'] ) / 3,
 							density = f( originItem['density'] ),
-							forcePower = f( originItem['power'] ),
-							inversePower = f( originItem['power'] ) * 1.5,
+							forcePower = f( originItem['power'] ) * FORCE_SCALE,
+							inversePower = f( originItem['power'] ) * FORCE_SCALE * 1.5,
 							fly = f( originItem['fly'] ) != 0,
 						}
 					}
@@ -380,8 +325,8 @@ GameLevel = extends BaseGameLevel {
 				}
 			}
 		}
-		print('end load items', @playerData.itemsByTypeId)
-		// this.nextStep()
+		// var endTimeSec = getTimeSec()
+		// print('end load items', loadedTimeSec - startTimeSec, endTimeSec - loadedTimeSec, endTimeSec - startTimeSec) // , playerData.itemsByTypeId)
 	},
 	
 	_physBlocks = null,
@@ -394,7 +339,7 @@ GameLevel = extends BaseGameLevel {
 				var p = @getPhysBlock(i)
 				;(@_physBlocks[p.type] || @_physBlocks[p.type] = [])[] = p
 			}
-			print "loadPhysBlocks: ${@_physBlocks}"
+			// print "loadPhysBlocks: ${@_physBlocks}"
 			return @_physBlocks[type] || throw "there is no type: ${type}"
 		}
 	},
@@ -453,7 +398,7 @@ GameLevel = extends BaseGameLevel {
 	},
 	
 	startWave = function(day, phase, maxAliveMonsters){
-		print "startWave"
+		// print "startWave"
 		@wave.time = @time
 		@wave.day = day
 		@wave.phase = phase
@@ -467,23 +412,23 @@ GameLevel = extends BaseGameLevel {
 		@spawnWaveMonsters()
 		
 		if(phase == 0){
-			@playerData.startTimeSec = @time // getTimeSec()
-			@playerData.playTimeSec = 0
-			@playerData.killedCountById = {}
-			@playerData.collectedCountById = {}
-			@playerData.usedCountById = {}
+			playerData.startTimeSec = @time // getTimeSec()
+			playerData.playTimeSec = 0
+			playerData.killedCountById = {}
+			playerData.collectedCountById = {}
+			playerData.usedCountById = {}
 
-			@playerData.healthDamaged = math.max(0, @playerData.healthDamaged - @playerData.healthRecovered)
-			@playerData.healthRecovered = 0
+			playerData.healthDamaged = math.max(0, playerData.healthDamaged - playerData.healthRecovered)
+			playerData.healthRecovered = 0
 			
-			@playerData.armorDamaged = math.max(0, @playerData.armorDamaged - @playerData.armorRecovered)
-			@playerData.armorRecovered = 0
+			playerData.armorDamaged = math.max(0, playerData.armorDamaged - playerData.armorRecovered)
+			playerData.armorRecovered = 0
 
-			@playerData.meat = math.max(0, math.round(@playerData.meat - @playerData.healthRecoverMeatUsed))
-			@playerData.healthRecoverMeatUsed = 0
+			playerData.meat = math.max(0, math.round(playerData.meat - playerData.healthRecoverMeatUsed))
+			playerData.healthRecoverMeatUsed = 0
 			
-			@playerData.money = math.max(0, math.round(@playerData.money - @playerData.armorRecoverMoneyUsed))
-			@playerData.armorRecoverMoneyUsed = 0
+			playerData.money = math.max(0, math.round(playerData.money - playerData.armorRecoverMoneyUsed))
+			playerData.armorRecoverMoneyUsed = 0
 			
 			// cm.callbacks['dayStarted'](@params.level, @params.invasion, @wave.day)
 		}
@@ -494,6 +439,18 @@ GameLevel = extends BaseGameLevel {
 		var x = math.random(area.pos.x - edge, area.pos.x + area.size.x + edge)
 		var y = math.random(area.pos.y - edge, area.pos.y + area.size.y + edge)
 		return vec2(x, y)
+	},
+	
+	deleteEntity = function(ent){
+		ent.isEntDead && throw "deleteEntity ${ent.classname}: ${ent.desc.image.id} - already dead"
+		print "deleteEntity ${ent.classname}: ${ent.desc.image.id}"
+		@destroyEntityPhysics(ent)
+		ent.detach()
+		ent.isEntDead = true
+	},
+	
+	isEntityDead = function(ent){
+		return !ent || ent.isEntDead
 	},
 	
 	monsterSide = 0,
@@ -522,7 +479,7 @@ GameLevel = extends BaseGameLevel {
 		}
 		var count = math.min(@wave.phaseMonsters - @wave.phaseMonstersSpawned, 
 				@wave.maxAliveMonsters - #@layers[LAYER.MONSTERS])
-		print "spawnWaveMonsters: ${count}, wave: ${@wave}"
+		print "spawnWaveMonsters: ${count}"
 		if(count > 0){				
 			if(@wave.phaseMonsters >= 10 
 				&& @wave.phaseMonsters - @wave.phaseMonstersSpawned - count <= 1)
@@ -625,7 +582,7 @@ GameLevel = extends BaseGameLevel {
 			params.phases[] = phase
 		}
 
-		print('day params ', params)
+		// print('day params ', params)
 	},
 	
 	initLevelPhysics = function(name){
@@ -713,8 +670,14 @@ GameLevel = extends BaseGameLevel {
 	},
 	
 	update = function(ev){
+		@time = ev.time
 		@updatePhysics(ev.dt)
 		@updateCamera(ev)
 		@player.update(ev)
+		for(var _, layer in @layers){
+			for(var child = layer.firstChild; child; child = child.nextSibling){
+				child.update(ev)
+			}
+		}
 	},
 }

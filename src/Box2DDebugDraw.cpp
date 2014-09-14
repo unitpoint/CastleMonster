@@ -105,12 +105,12 @@ void Box2DDraw::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& c
 void Box2DDraw::DrawTransform(const b2Transform& xf)
 {
 	b2Vec2 p1 = xf.p, p2;
-	const float32 k_axisScale = 0.4f;
+	const float32 k_axisScale = toPhysValue(10.0f);
 
 	p2 = p1 + k_axisScale * xf.q.GetXAxis();
 	DrawSegment(p1, p2, b2Color(1, 0, 0));
 
-	p2 = p1 + k_axisScale * xf.q.GetYAxis();
+	p2 = p1 - k_axisScale * xf.q.GetYAxis();
 	DrawSegment(p1, p2, b2Color(0, 1, 0));
 }
 

@@ -72,6 +72,23 @@ public:
 	EPhysCellType getType() const { return type; }
 };
 
+class BaseEntity;
+
+DECLARE_SMART(PhysContact, spPhysContact);
+class PhysContact: public Object
+{
+public:
+	OS_DECLARE_CLASSINFO(PhysContact);
+
+	b2Contact * contact;
+
+	PhysContact(b2Contact * c){ contact = c; }
+	void reset(){ contact = NULL; }
+
+	int getCategoryBits(int i) const;
+	BaseEntity * getEntity(int i) const;
+};
+
 float toPhysValue(float a);
 float fromPhysValue(float a);
 b2Vec2 toPhysVec(const Vector2 &pos);
@@ -102,6 +119,12 @@ public:
 	Vector2 getLinearVelocity() const
 	{
 		return body ? fromPhysVec(body->GetLinearVelocity()) : Vector2(0, 0);
+	}
+	void setLinearVelocity(const Vector2& a)
+	{
+		if(body){
+			body->SetLinearVelocity(toPhysVec(a));
+		}
 	}
 
 	bool getIsAwake() const 
@@ -166,6 +189,7 @@ protected:
 
 	spBox2DDraw debugDraw;
 
+	float accumTimeSec;
 	b2World * physWorld;
 	PhysCell * physCells;
 	int physCellWidth;
@@ -265,6 +289,7 @@ OS_DECL_CTYPE_ENUM(EPhysCellType);
 OS_DECL_CTYPE_ENUM(SDL_Scancode);
 // OS_DECL_CTYPE_ENUM(SDL_Keycode);
 OS_DECL_OX_CLASS(PhysBlock);
+OS_DECL_OX_CLASS(PhysContact);
 OS_DECL_OX_CLASS(BaseGameLevel);
 OS_DECL_OX_CLASS(BaseEntity);
 OS_DECL_OX_CLASS(KeyboardEvent);

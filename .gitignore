@@ -7,6 +7,12 @@ tools/cache-osc
 
 data/ext
 data-ram
+data_debug/images/items
+data_debug/images/medals
+data_debug/images/monsters
+data_debug/images/weapons
+data_debug/images/level-*
+
 proj.android/obj
 proj.android/bin
 proj.android/gen

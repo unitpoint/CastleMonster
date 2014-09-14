@@ -31,6 +31,17 @@ function randItem(items){
 	return items
 }
 
+function randSign(){
+	return math.random()*2-1
+}
+
+function randTime(time, scale){
+	if(time[0]){
+		return math.random(time[0], time[1]) * (scale || 1)
+	}
+	return time * (1 + randSign()*0.1) * (scale || 1)
+}
+
 function PhysBlock.valueOf(){
 	return {type = @type, pos = @pos, size = @size}.valueOf()
 }
@@ -64,5 +75,68 @@ TEST_LEVEL_INVASION = 3
 INVASION_COUNT = 30
 DAY_COUNT = 30
 
-GameLevel(0, 1, 1).attachTo(stage)
+FORCE_SCALE = 0.1
+
+playerData = {
+	__get = function(name){
+		throw "property \"${name}\" not found in \"${@__name || @classname}\""
+	},
+
+	money = 0,
+	meat = 0,
+	enemyKilled = 0,
+	
+	health = 100,
+	armor = 100,
+	
+	healthDamaged = 0,
+	armorDamaged = 0,
+	// damaged = 0,
+	damagedTime = 0,
+	
+	healthRecovered = 0,
+	armorRecovered = 0,
+
+	healthRecoverMeatUsed = 0,
+	armorRecoverMoneyUsed = 0,
+	
+	armorItem = null,
+	defaultWeaponItem = null,
+	
+	// items = {},
+	originItems = {},
+	itemsById = {},
+	itemsByNameId = {},
+	itemsByTypeId = {},
+	
+	killedCountById = {},
+	collectedCountById = {},
+	usedCountById = {},
+	
+	startTimeSec = 0,
+	playTimeSec = 0,
+	daysCompleted = 0,
+	
+	activeItems = {},
+	activeArtefacts = {},
+	activeArmors = {},
+	activeWeapons = {},
+	
+	effects = {
+		scale = {
+			weaponDamage = 1.0,
+			weaponFrequency = 1.0,
+			weaponSpeed = 1.0,
+			weaponDensity = 1.0,
+			playerArmor = 1.0,
+			playerHealth = 1.0,
+			playerSpeed = 1.0,
+			monsterHealth = 1.0,
+			monsterSpeed = 1.0
+		},
+		weaponFireType = 0
+	}
+}
+
+GameLevel(5, 1, 15).attachTo(stage)
 

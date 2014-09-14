@@ -7,8 +7,8 @@ function resLevels.getResAnim(name){
 	res === prevRes && return res
 	prevRes.unload()
 	prevRes = res
-	print "begin load res: "..name
+	// print "begin load res: "..name
 	res.load()
-	print "end load res: "..name
+	// print "end load res: "..name
 	return res
 }

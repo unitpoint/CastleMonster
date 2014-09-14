@@ -34,6 +34,12 @@ static void registerBaseGameGlobals(OS * os)
 		DEF_CONST(PHYS_SOLID),
 		DEF_CONST(PHYS_PLAYER_SPAWN),
 		DEF_CONST(PHYS_MONSTER_SPAWN),
+		DEF_CONST(PHYS_DEF_FIXED_ROTATION),
+		DEF_CONST(PHYS_DEF_LINEAR_DAMPING),
+		DEF_CONST(PHYS_DEF_ANGULAR_DAMPING),
+		DEF_CONST(PHYS_DEF_DENSITY),
+		DEF_CONST(PHYS_DEF_RESTITUTION),
+		DEF_CONST(PHYS_DEF_FRICTION),
 		{}
 	};
 	os->pushGlobals();
@@ -101,6 +107,30 @@ bool __registerPhysBlock = addRegFunc(registerPhysBlock);
 
 // =====================================================================
 
+static void registerPhysContact(OS * os)
+{
+	struct Lib {
+		static PhysContact * __newinstance()
+		{
+			return new PhysContact(NULL);
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		// def("__newinstance", &Lib::__newinstance),
+		def("getCategoryBits", &PhysContact::getCategoryBits),
+		def("getEntity", &PhysContact::getEntity),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<PhysContact, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
+}
+bool __registerPhysContact = addRegFunc(registerPhysContact);
+
+// =====================================================================
+
 static void registerBaseEntity(OS * os)
 {
 	struct Lib {
@@ -119,13 +149,14 @@ static void registerBaseEntity(OS * os)
 			}
 			Vector2 force = CtypeValue<Vector2>::getArg(os, -params+0);
 			self->applyForce(force, params >= 2 ? os->getValueId(-params+1) : 0);
+			return 0;
 		}
 	};
 
 	OS::FuncDef funcs[] = {
 		def("__newinstance", &Lib::__newinstance),
 		{"applyForce", &Lib::applyForce},
-		DEF_GET(linearVelocity, BaseEntity, LinearVelocity),
+		DEF_PROP(linearVelocity, BaseEntity, LinearVelocity),
 		DEF_GET(isAwake, BaseEntity, IsAwake),
 		DEF_SET(linearDamping, BaseEntity, LinearDamping),
 		DEF_SET(angularDamping, BaseEntity, AngularDamping),
@@ -193,21 +224,27 @@ void KeyboardEvent::makeStr()
 // =====================================================================
 // =====================================================================
 
-struct SaveStackSize
-{
-	ObjectScript::OS * os;
-	int stackSize;
+// =====================================================================
+// =====================================================================
+// =====================================================================
 
-	SaveStackSize(ObjectScript::OS * p_os)
-	{
-		os = p_os;
-		stackSize = os->getStackSize();
+int PhysContact::getCategoryBits(int i) const 
+{
+	if(contact){
+		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
+		return fixture->GetFilterData().categoryBits;
 	}
-	~SaveStackSize()
-	{
-		os->pop(os->getStackSize() - stackSize);
+	return 0;
+}
+
+BaseEntity * PhysContact::getEntity(int i) const
+{
+	if(contact){
+		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
+		return dynamic_cast<BaseEntity*>((BaseEntity*)fixture->GetBody()->GetUserData());
 	}
-};
+	return 0;
+}
 
 // =====================================================================
 // =====================================================================
@@ -230,8 +267,8 @@ void BaseEntity::applyForce(const Vector2& viewForce, int paramsValueId)
 		return;
 	}
 	if(viewForce.x || viewForce.y){
+		ObjectScript::SaveStackSize saveStackSize;
 		ObjectScript::OS * os = ObjectScript::os;
-		SaveStackSize saveStackSize(os);
 
 		b2Vec2 force = toPhysVec(viewForce);
 		
@@ -280,6 +317,7 @@ void BaseEntity::applyForce(const Vector2& viewForce, int paramsValueId)
 
 BaseGameLevel::BaseGameLevel()
 {
+	accumTimeSec = 0;
 	physWorld = NULL;
 	physCells = NULL;
 	platfromEventId = Input::instance.addEventListener(Input::event_platform, CLOSURE(this, &BaseGameLevel::onPlatformEvent));
@@ -350,7 +388,7 @@ PhysCell * BaseGameLevel::getPhysCell(int x, int y)
 	return NULL;
 }
 
-const float PHYS_SCALE = 1.0f / 10.0f;
+const float PHYS_SCALE = 1.0f / 100.0f;
 
 float toPhysValue(float a)
 {
@@ -471,8 +509,8 @@ void BaseGameLevel::initPhysBlocks()
 
 Actor * getOSActor(Actor * actor, const char * name)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
 	ObjectScript::pushCtypeValue(os, actor);
 	os->getProperty(-1, name);
 	return ObjectScript::CtypeValue<Actor*>::getArg(os, -1);
@@ -480,8 +518,8 @@ Actor * getOSActor(Actor * actor, const char * name)
 
 float getOSActorFloat(Actor * actor, const char * name, float def)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
 	ObjectScript::pushCtypeValue(os, actor);
 	os->getProperty(-1, name);
 	return os->toFloat(-1, def);
@@ -489,8 +527,8 @@ float getOSActorFloat(Actor * actor, const char * name, float def)
 
 float getOSActorPhysicsFloat(Actor * actor, const char * name, float def)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
 	ObjectScript::pushCtypeValue(os, actor);
 	os->getProperty(-1, "physics");
 	os->getProperty(-1, name);
@@ -499,13 +537,13 @@ float getOSActorPhysicsFloat(Actor * actor, const char * name, float def)
 
 int getOSActorPhysicsInt(Actor * actor, const char * name, int def)
 {
-	return (int)getOSActorPhysicsFloat(actor, name, (int)def);
+	return (int)getOSActorPhysicsFloat(actor, name, (float)def);
 }
 
 bool getOSActorPhysicsBool(Actor * actor, const char * name, bool def)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
 	ObjectScript::pushCtypeValue(os, actor);
 	os->getProperty(-1, "physics");
 	os->getProperty(-1, name);
@@ -519,8 +557,8 @@ Actor * BaseGameLevel::getView()
 
 void BaseGameLevel::addEntityPhysicsShapes(BaseEntity * ent)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
 
 	OX_ASSERT(ent->game && ent->body);
 
@@ -590,11 +628,11 @@ void BaseGameLevel::addEntityPhysicsShapes(BaseEntity * ent)
 
 void BaseGameLevel::initEntityPhysics(BaseEntity * ent)
 {
+	ObjectScript::SaveStackSize saveStackSize;
 	ObjectScript::OS * os = ObjectScript::os;
-	SaveStackSize saveStackSize(os);
-
+	
 	if(ent->game || ent->body){
-		os->setException("entity is already initialized");
+		os->setException("entity physics is already initialized");
 		os->handleException();
 		return;
 	}
@@ -620,6 +658,9 @@ void BaseGameLevel::initEntityPhysics(BaseEntity * ent)
 
 void BaseGameLevel::destroyEntityPhysics(BaseEntity * ent)
 {
+	if(!ent->body){
+		return;
+	}
 	OX_ASSERT(ent->game == this);
 	OX_ASSERT(ent->body);
 	
@@ -634,6 +675,7 @@ void BaseGameLevel::destroyEntityPhysics(BaseEntity * ent)
 		joint = ent->body->GetJointList();
 	} */
 
+	OX_ASSERT(std::find(waitBodiesToDestroy.begin(), waitBodiesToDestroy.end(), ent->body) == waitBodiesToDestroy.end());
 	waitBodiesToDestroy.push_back(ent->body);
 
 	ent->body->SetUserData(NULL);
@@ -668,15 +710,14 @@ void BaseGameLevel::destroyAllBodies()
 	for(; body; body = next){
 		next = body->GetNext();
 		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)body->GetUserData());
-		if(!ent){
-			continue;
+		if(ent){
+			OX_ASSERT(ent->game == this);
+			OX_ASSERT(ent->body == body);
+			ent->body->SetUserData(NULL);
+			ent->body = NULL;
+			ent->game = NULL;
 		}
-		OX_ASSERT(ent->game == this);
-		OX_ASSERT(ent->body == body);
-		ent->body->SetUserData(NULL);
-		physWorld->DestroyBody(ent->body);
-		ent->body = NULL;
-		ent->game = NULL;
+		physWorld->DestroyBody(body);
 	}
 }
 
@@ -686,7 +727,13 @@ void BaseGameLevel::updatePhysics(float dt)
 		return;
 	}
 	destroyWaitBodies();
-	physWorld->Step(dt, 6, 2);
+
+	accumTimeSec += dt;
+	dt = 1.0f/30.0f;
+	while(accumTimeSec >= dt){ 
+		physWorld->Step(dt, 6, 2);
+		accumTimeSec -= dt;
+	}
 
 	b2Body * body = physWorld->GetBodyList();
 	for(; body; body = body->GetNext()){
@@ -695,6 +742,40 @@ void BaseGameLevel::updatePhysics(float dt)
 			OX_ASSERT(ent->body == body);
 			ent->setPosition(fromPhysVec(body->GetPosition()));
 			ent->setRotation(body->GetAngle());
+		}
+	}
+
+	ObjectScript::OS * os = ObjectScript::os;
+	b2Contact * c = physWorld->GetContactList();
+	for(; c; c = c->GetNext()){
+		spPhysContact physContact;
+		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
+		if(ent){
+			ObjectScript::pushCtypeValue(os, ent);
+			os->getProperty("onPhysicsContact");
+			OX_ASSERT(os->isFunction());
+			ObjectScript::pushCtypeValue(os, ent); // this
+			physContact = new PhysContact(c);
+			ObjectScript::pushCtypeValue(os, physContact);
+			os->pushNumber(0);
+			os->call(2, 1);
+			if(os->popBool()){
+				continue;
+			}
+		}
+		ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureB()->GetBody()->GetUserData());
+		if(ent){
+			ObjectScript::pushCtypeValue(os, ent);
+			os->getProperty("onPhysicsContact");
+			OX_ASSERT(os->isFunction());
+			ObjectScript::pushCtypeValue(os, ent); // this
+			if(!physContact) physContact = new PhysContact(c);
+			ObjectScript::pushCtypeValue(os, physContact);
+			os->pushNumber(1);
+			os->call(2);
+		}
+		if(physContact){
+			physContact->reset();
 		}
 	}
 }

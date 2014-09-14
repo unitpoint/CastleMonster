@@ -1,7 +1,6 @@
 Player = extends Entity {
 	__object = {
 		originSpeed = 120,
-		stopDampingUpdated = true,
 		playerSpeedScale = null,
 		isShooting = false,
 	},
@@ -11,7 +10,7 @@ Player = extends Entity {
 		@attrs {
 			resAnim = res.getResAnim("players/1"),
 			parent = level.layers[LAYER.PLAYER],
-			pos = vec2(300, 370),
+			pos = level.randAreaPos(randItem(level.getPhysTypeBlocks(PHYS_PLAYER_SPAWN))),
 			pivot = vec2(0.5, 0.5),
 		}
 		@physics = {
@@ -29,7 +28,7 @@ Player = extends Entity {
 			
 			minSpeed: 0,
 			maxSpeed: @originSpeed,
-			forcePower: 10000 * 3.0,
+			forcePower: 1000 * FORCE_SCALE * 3.0,
 			
 			shapes: [ {						
 				radiusScale: 0.8
@@ -44,7 +43,7 @@ Player = extends Entity {
 				radiusScale: 8,
 				sensor: true,
 				density: 0,
-				ignoreBits: cm.physics.CAT_BIT_ALL & ~cm.physics.CAT_BIT_MONSTER
+				ignoreBits: PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_MONSTER
 			}*/ ]
 		}
 		level.initEntityPhysics(this)
@@ -56,11 +55,11 @@ Player = extends Entity {
 		var keys = {
 			120 = {
 				linearDamping = 0.04,
-				forcePower = 10000 * 2.0,
+				forcePower = 1000 * FORCE_SCALE * 2.0,
 			},
 			300 = {
 				linearDamping = 0.08,
-				forcePower = 10000 * 3.0,
+				forcePower = 1000 * FORCE_SCALE * 3.0,
 			}
 		}
 		var selectedKeys = []
@@ -108,7 +107,6 @@ Player = extends Entity {
 	},
 	
 	update = function(ev){
-		@time = ev.time
 		if(@level.moveJoystick.active){
 			var dir = @level.moveJoystick.dir
 		}else{
@@ -128,8 +126,8 @@ Player = extends Entity {
 				@stopDampingUpdated = false
 			}
 			
-			if(@playerSpeedScale === null || @playerSpeedScale != @level.playerData.effects.scale.playerSpeed){
-				@playerSpeedScale = @level.playerData.effects.scale.playerSpeed
+			if(@playerSpeedScale === null || @playerSpeedScale != playerData.effects.scale.playerSpeed){
+				@playerSpeedScale = playerData.effects.scale.playerSpeed
 				@setMaxSpeed(@originSpeed * @playerSpeedScale)
 				print('player max speed changed', @physics.maxSpeed)
 			}
@@ -149,6 +147,9 @@ Player = extends Entity {
 		}
 		
 		@updateSprite()
+	},
+	
+	onPhysicsContact = function(){
 	},
 	
 	playFootstepSound = function(){

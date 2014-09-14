@@ -406,15 +406,6 @@ function OS2DObject._unregisterAllExternalTweens(){
 	// print "${@classname}#${@__id}._unregisterAllExternalTweens"
 }
 
-function Actor.__len(){
-	return @childrenCount()
-}
-
-function Actor.__get(i){
-	// if(typeOf(i) === "number"){
-	return i is Number ? @childAt(i) : super(i)
-}
-
 function Actor.__get@_internalActions(){
 	@setProperty("_internalActions", {})
 	var self = this
@@ -535,6 +526,19 @@ function OS2DObject._unregisterAllExternalChildren(){
 	// @_externalChildren = {}
 	@setProperty("_externalChildren", {})
 	// print "${@classname}#${@__id}._unregisterAllExternalChildren"
+}
+
+function OS2DObject.__len(){
+	// return @childrenCount()
+	return #@_externalChildren
+}
+
+function OS2DObject.__get(i){
+	// return i is Number ? @childAt(i) : super(i)
+	if(typeOf(i) === "number"){
+		return @_externalChildren[i]
+	}
+	return super(i)
 }
 
 /*	

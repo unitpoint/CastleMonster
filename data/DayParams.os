@@ -315,10 +315,10 @@ DayParams = extends Object {
 		level_power || level_power = 1.5
         level_power = math.pow(level_power, math.max(0, @level - @start_level))
         invasion_power = math.pow(invasion_power, math.max(0, @invasion - @start_invasion))
-        var day_value = @getInterpolated({1 = a, DAY_COUNT = b}, @day)
+        var day_value = @getInterpolated({1 = a, [DAY_COUNT] = b}, @day)
 		// print "day_value: "..day_value
         if(@start_day <= @day){
-            var start_day_value = @getInterpolated({1 = a, DAY_COUNT = b}, @start_day)
+            var start_day_value = @getInterpolated({1 = a, [DAY_COUNT] = b}, @start_day)
 			// print "start_day_value: "..start_day_value
             // day_value /= start_day_value
 			day_value = day_value / start_day_value

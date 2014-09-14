@@ -11,7 +11,6 @@ DIR_LEFT_UP = 7
 Entity = extends BaseEntity {
 	__object = {
 		level = null,
-		time = 0,
 		aimTime = 0,
 		aimInverse = false,
 		dirIndex = DIR_RIGHT_UP,
@@ -20,11 +19,58 @@ Entity = extends BaseEntity {
 		animUpdateHandle = null,
 		path = null,
 		isRunning = false,
+		stopDampingUpdated = true,
+		isEntVisible = true,
+		isEntDead = false,
+		desc = null,
+		damagedTime = 0,
+		damaged = 0,
 	},
 	
 	__construct = function(level){
 		super()
 		@level = level
+	},
+	
+	initEntity = function(params){
+		var pos = params.pos
+		if(params.spawnOffs){
+			if(params.spawnOffs is vec2){
+				pos = pos + params.spawnOffs
+			}else{
+				params.targetDir is vec2 || throw "!params.targetDir "..params
+				pos = pos + params.targetDir * params.spawnOffs
+			}
+		}			
+		
+		@attrs {
+			resAnim = res.getResAnim(params.image.id),
+			// parent = @level.layers[LAYER.MONSTERS],
+			pos = pos,
+			pivot = vec2(0.5, 0.5),
+			physics = params.physics,
+			desc = params,
+		}
+	
+		if(params.angle){
+			@angle = params.angle
+		}else if(params.targetDir){
+			@angle = params.targetDir.angle
+		}
+		
+		@level.initEntityPhysics(this)
+		
+		if(params.physics.speed){
+			@linearVelocity = vec2.fromAngle(@angle) * params.physics.speed
+		}
+	},
+	
+	onPhysicsContact = function(){
+		throw "onPhysicsContact is not implemented in ${@classname}"
+	},
+	
+	spawnBullet = function(){
+		throw "spawnBullet is not implemented in ${@classname}"
 	},
 	
 	/* __set@x = function(p){
@@ -68,29 +114,6 @@ Entity = extends BaseEntity {
 		return DIR_STAY
 	},
 	
-	/* updateAnimToDir = function(dir){
-		// dir = dir.clone().normalize()
-		var dirIndex = @dirToIndex(dir || @linearVelocity.normalize())
-		if(dirIndex == DIR_STAY){
-			// return
-		}
-		var maxAnimSpeed = @physics.maxSpeed
-		var animSpeed = math.min(#@linearVelocity, maxAnimSpeed) / maxAnimSpeed
-		// print "speed: ${@speed}, ${animSpeed}"
-		
-		var dirChanged = @dirIndex != dirIndex
-		if(!dirChanged && @animSpeed == animSpeed){
-			return
-		}
-		@dirIndex, @animSpeed = dirIndex, animSpeed
-		var dt = math.min(0.2, 0.1 / animSpeed)
-		if(dirChanged){
-			@playAnim(dt, [dirIndex*2+0, dirIndex*2+1])
-		}else{
-			@animUpdateHandle.interval = dt
-		}
-	}, */
-	
 	updateSprite: function(){
 		var level = @level
 		if(level.paused){
@@ -112,8 +135,8 @@ Entity = extends BaseEntity {
 			// dirIndex = cm.dirToIndex(p);
 		} */
 		if(dirIndex == DIR_STAY){
-			if(this != level.player && !@path && @time - @aimTime < 0.6){ // actor.desc.physics.aimMoveOnly){ // && speed < actor.desc.physics.maxSpeed * 0.7){
-				print("[aimMoveOnly] speed: ${speed}, max: ${@physics.maxSpeed}");
+			if(this != level.player && !@path && level.time - @aimTime < 0.6){ // actor.desc.physics.aimMoveOnly){ // && speed < actor.desc.physics.maxSpeed * 0.7){
+				// print("[aimMoveOnly] speed: ${speed}, max: ${@physics.maxSpeed}");
 				var dir = (level.player.pos - @pos).normalize()
 				if(@aimInverse){
 					dir = -dir
@@ -171,7 +194,7 @@ Entity = extends BaseEntity {
 				break
 			}
 		}
-		if(dirIndex == DIR_STAY || @time - @dirChangeTime < 0.2){
+		if(dirIndex == DIR_STAY || level.time - @dirChangeTime < 0.2){
 			// print "use cur dirIndex: ${@dirIndex}, time: ${@time}, dirChangeTime: ${@dirChangeTime}"
 			dirIndex = @dirIndex
 		}
@@ -195,14 +218,14 @@ Entity = extends BaseEntity {
 				dirIndex = (dirIndex + 8) % 8
 			}
 			
-			@dirChangeTime = @time
+			@dirChangeTime = level.time
 			@dirIndex = dirIndex
 			@isRunning = isRunning
 			
 			if(isRunning){
 				// print "play new dirIndex: ${dirIndex}"
 				@playAnim(0.2, [dirIndex*2+0, dirIndex*2+1])
-			}else{
+			}else if(this == level.player){
 				// print "play new dirIndex: ${dirIndex}"
 				@stopAnim()
 				// @resAnimFrameNum = dirIndex*2 + math.round(math.random())
