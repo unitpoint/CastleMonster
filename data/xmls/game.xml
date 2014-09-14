@@ -28,6 +28,64 @@
 		<image id="monsters/carnivorous_flower" file="data_debug/images/monsters/carnivorous_flower.png" cols="20" />
 		<image id="monsters/blue_bug" file="data_debug/images/monsters/blue_bug.png" cols="20" />
 		<image id="monsters/arbyz" file="data_debug/images/monsters/arbyz.png" cols="20" />
+		
+		<image id="weapons/1" file="data_debug/images/weapons/1.png" cols="2" />
+		<image id="weapons/10" file="data_debug/images/weapons/10.png" cols="2" />
+		<image id="weapons/11" file="data_debug/images/weapons/11.png" cols="2" />
+		<image id="weapons/12" file="data_debug/images/weapons/12.png" cols="2" />
+		<image id="weapons/13" file="data_debug/images/weapons/13.png" cols="2" />
+		<image id="weapons/14" file="data_debug/images/weapons/14.png" cols="2" />
+		<image id="weapons/15" file="data_debug/images/weapons/15.png" cols="2" />
+		<image id="weapons/16" file="data_debug/images/weapons/16.png" cols="2" />
+		<image id="weapons/17" file="data_debug/images/weapons/17.png" cols="2" />
+		<image id="weapons/18" file="data_debug/images/weapons/18.png" cols="2" />
+		<image id="weapons/19" file="data_debug/images/weapons/19.png" cols="2" />
+		<image id="weapons/2" file="data_debug/images/weapons/2.png" cols="2" />
+		<image id="weapons/20" file="data_debug/images/weapons/20.png" cols="2" />
+		<image id="weapons/21" file="data_debug/images/weapons/21.png" cols="2" />
+		<image id="weapons/22" file="data_debug/images/weapons/22.png" cols="2" />
+		<image id="weapons/23" file="data_debug/images/weapons/23.png" cols="2" />
+		<image id="weapons/24" file="data_debug/images/weapons/24.png" cols="2" />
+		<image id="weapons/25" file="data_debug/images/weapons/25.png" cols="2" />
+		<image id="weapons/26" file="data_debug/images/weapons/26.png" cols="2" />
+		<image id="weapons/27" file="data_debug/images/weapons/27.png" cols="2" />
+		<image id="weapons/28" file="data_debug/images/weapons/28.png" cols="2" />
+		<image id="weapons/29" file="data_debug/images/weapons/29.png" cols="2" />
+		<image id="weapons/3" file="data_debug/images/weapons/3.png" cols="2" />
+		<image id="weapons/30" file="data_debug/images/weapons/30.png" cols="2" />
+		<image id="weapons/31" file="data_debug/images/weapons/31.png" cols="2" />
+		<image id="weapons/32" file="data_debug/images/weapons/32.png" cols="2" />
+		<image id="weapons/33" file="data_debug/images/weapons/33.png" cols="2" />
+		<image id="weapons/34" file="data_debug/images/weapons/34.png" cols="2" />
+		<image id="weapons/35" file="data_debug/images/weapons/35.png" cols="2" />
+		<image id="weapons/36" file="data_debug/images/weapons/36.png" cols="2" />
+		<image id="weapons/37" file="data_debug/images/weapons/37.png" cols="2" />
+		<image id="weapons/38" file="data_debug/images/weapons/38.png" cols="2" />
+		<image id="weapons/39" file="data_debug/images/weapons/39.png" cols="2" />
+		<image id="weapons/4" file="data_debug/images/weapons/4.png" cols="2" />
+		<image id="weapons/40" file="data_debug/images/weapons/40.png" cols="2" />
+		<image id="weapons/41" file="data_debug/images/weapons/41.png" cols="2" />
+		<image id="weapons/42" file="data_debug/images/weapons/42.png" cols="2" />
+		<image id="weapons/43" file="data_debug/images/weapons/43.png" cols="2" />
+		<image id="weapons/44" file="data_debug/images/weapons/44.png" cols="2" />
+		<image id="weapons/45" file="data_debug/images/weapons/45.png" cols="2" />
+		<image id="weapons/46" file="data_debug/images/weapons/46.png" cols="2" />
+		<image id="weapons/47" file="data_debug/images/weapons/47.png" cols="2" />
+		<image id="weapons/48" file="data_debug/images/weapons/48.png" cols="2" />
+		<image id="weapons/49" file="data_debug/images/weapons/49.png" cols="2" />
+		<image id="weapons/5" file="data_debug/images/weapons/5.png" cols="2" />
+		<image id="weapons/50" file="data_debug/images/weapons/50.png" cols="2" />
+		<image id="weapons/51" file="data_debug/images/weapons/51.png" cols="2" />
+		<image id="weapons/52" file="data_debug/images/weapons/52.png" cols="2" />
+		<image id="weapons/53" file="data_debug/images/weapons/53.png" cols="2" />
+		<image id="weapons/54" file="data_debug/images/weapons/54.png" cols="2" />
+		<image id="weapons/55" file="data_debug/images/weapons/55.png" cols="2" />
+		<image id="weapons/56" file="data_debug/images/weapons/56.png" cols="2" />
+		<image id="weapons/6" file="data_debug/images/weapons/6.png" cols="2" />
+		<image id="weapons/7" file="data_debug/images/weapons/7.png" cols="2" />
+		<image id="weapons/8" file="data_debug/images/weapons/8.png" cols="2" />
+		<image id="weapons/9" file="data_debug/images/weapons/9.png" cols="2" />
+		
 	</atlas>
 
 	<set path = "../" />
