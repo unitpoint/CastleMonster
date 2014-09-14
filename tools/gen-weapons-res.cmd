@@ -1,0 +1,1 @@
+..\..\..\tools\os gen-weapons-res.os
