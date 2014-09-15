@@ -4,6 +4,8 @@ Joystick = extends Sprite {
 		
 		@resAnim = res.getResAnim("joystick")
 		@opacity = 0.5
+		@extendedClickArea = @width * 1.0
+		@touchEnabled = true
 		
 		@addEventListener(TouchEvent.TOUCH_DOWN, @onEvent.bind(this))
 		@addEventListener(TouchEvent.TOUCH_UP, @onEvent.bind(this))

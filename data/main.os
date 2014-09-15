@@ -76,6 +76,7 @@ INVASION_COUNT = 30
 DAY_COUNT = 30
 
 FORCE_SCALE = 0.1
+PLAYER_FORCE_SCALE = FORCE_SCALE
 
 playerData = {
 	__get = function(name){
@@ -130,7 +131,7 @@ playerData = {
 			weaponDensity = 1.0,
 			playerArmor = 1.0,
 			playerHealth = 1.0,
-			playerSpeed = 1.0,
+			playerSpeed = 2.0, // 1.0,
 			monsterHealth = 1.0,
 			monsterSpeed = 1.0
 		},

@@ -260,7 +260,7 @@ Monster = extends Entity {
 			var forcePower = @desc.physics.forcePower
 			@aimForce = vec2(to.x - from.x, to.y - from.y).normalizeTo(forcePower * 0.9)
 			@applyForce(@aimForce, {speedScale = playerData.effects.scale.monsterSpeed})
-			// cm.log("[path move] apply force: "+cm.round(force.x, 1)+" "+cm.round(force.y, 1))
+			print("[path move] apply force: "..math.round(force.x, 1).." "..math.round(force.y, 1))
 		}
 		return true
 	},
@@ -443,7 +443,105 @@ Monster = extends Entity {
 		} 
 	},
 	
-	onPhysicsContact = function(){
+	onPhysicsContact = function(contact, i){
+		// var other = i ? contact.m_shape1 : contact.m_shape2;
+		
+		/* if(other.m_body.actor && other.m_body.actor.desc && other.m_body.actor.desc.image)
+		cm.log('[monster contact]', 
+			other.m_body.actor && other.m_body.actor.desc && other.m_body.actor.desc.image && other.m_body.actor.desc.image.id, 
+			other.m_body.actor); */
+			
+		var otherCategoryBits = contact.getCategoryBits(1-i)
+		if((otherCategoryBits & PHYS_CAT_BIT_PLAYER_FIRE) != 0){
+			if(@desc.physics.aimOnDamage 
+					/* && (@desc.physics.aimOnDamage == "inverse" 
+							|| @time - @aimTime > @desc.physics.aimOnDamageSec * 1000)*/)
+			{
+				if(@desc.physics.aimOnDamage === true){
+					@pathNextTime = @time - 10
+				}
+				@moveMonster(@desc.physics.aimOnDamage)
+				print("[aim on damage] "..@desc.image.id..", "..@desc.physics.aimOnDamage)
+			}
+		}else if((otherCategoryBits & PHYS_CAT_BIT_PLAYER) != 0){
+			if(!contact.getIsSensor(1-i)) //@desc.physics.inverseDurationSec !== undefined)
+			{
+				var other = contact.getEntity(1-i)
+				other.playPainSound()
+				
+				@playIdleSound()
+				@moveMonster("inverse")
+				// print("[touch player] "..@desc.image.id)
+			}
+		}else if((otherCategoryBits & PHYS_CAT_BIT_MONSTER) != 0){
+			var other = contact.getEntity(1-i)
+
+			// other.physicsBody.ApplyForce( @aimForce, other.physicsBody.GetCenterPosition() );
+			// cm.applyActorForce(other, {x:@aimForce.x*2, y:@aimForce.y*2});
+			if(@level.useMonstersBattle && @desc.battleSide != other.desc.battleSide){
+				other.moveMonster("inverse");
+				if(/*@aim === true &&*/ other.time - other.damagedTime > 0.3){
+					other.damagedTime = other.time
+					other.damaged += 10
+					if(other.damaged >= other.desc.health){
+						@level.dieEntity(other)
+					}else if(!other.path && other.target != this){
+						other.target = this
+						other.path = false
+						other.pathNextTime = other.time - 10
+					}
+				}
+				@moveMonster("inverse")
+				if(/*other.aim === true &&*/ @time - @damagedTime > 0.3){
+					@damagedTime = @time
+					@damaged += 10
+					if(@damaged >= @desc.health){
+						@level.dieEntity(this)
+					}else if(!@path && @target !== other){
+						@target = other
+						@path = false
+						@pathNextTime = other.time - 10
+					}
+				}
+				return true
+			}else  if(!@aimInverse){
+				var selfPathUsed = @aimType === true /*!@aimInverse && !@stopped*/ && @path
+				var otherPathUsed = other.aimType === true /*!other.aimInverse && !other.stopped*/ && other.path
+				
+				var level = @level
+				var target = @target || level.player
+				if(selfPathUsed && otherPathUsed){
+					var remain = @path.length - @pathIndex
+					var remainOther = other.path.length - other.pathIndex
+					var actor = remain < remainOther && level.traceEntities(other, target, other.desc.physics.fly) ? this : other
+					if(true){
+						actor.moveMonster("inverse")
+						actor.applyForce(actor.aimForce*3, {noClipForce = true})
+						print("[push monster] "..actor.desc.image.id)
+					}						
+					return true
+					// cm.applyActorForce(actor, {x:actor.aimForce.x*2, y:actor.aimForce.y*2});
+				}else if(selfPathUsed || otherPathUsed){
+					/* var actor = otherPathUsed ? this : other;
+					if(level.traceActors(actor, level.player, actor.desc.physics.fly)){
+						actor.moveMonster("inverse");
+						cm.applyActorForce(actor, {x:actor.aimForce.x*2, y:actor.aimForce.y*2});
+						cm.log("[push monster2] "+actor.desc.image.id);
+						// return true;
+					}else{
+						// cm.applyActorForce(this, {x:@aimForce.x*10, y:@aimForce.y*10}, true);
+					}
+					return true; */
+				}
+			}
+		}else if((otherCategoryBits & (PHYS_CAT_BIT_STATIC | PHYS_CAT_BIT_WATER)) != 0){
+			if(@time > (@endContinualTime + @startContinualTime)/2 && /*@isMonsterVisible &&*/ @aimInverse){
+				// @endContinualTime = 0;
+				// @path = false;
+				// cm.log("[break inverse] "+@desc.image.id+", wall is touched");
+				// @moveMonster(cm.randItem([false, "stop"]));
+			}
+		}
 	},
 	
 	spawnBullet = function(){
@@ -457,7 +555,7 @@ Monster = extends Entity {
 		}
 		var fireIntervalSec = level.time - level.monsterFireTime
 		if(fireIntervalSec < waveParams.monsterFireIntervalSec){
-			print("[monster fire] skipped, time is blocked "..math.round(fireIntervalSec, 2).." "..waveParams.monsterFireIntervalSec)
+			// print("[monster fire] skipped, time is blocked "..math.round(fireIntervalSec, 2).." "..waveParams.monsterFireIntervalSec)
 			return
 		}
 		

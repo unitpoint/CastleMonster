@@ -28,7 +28,7 @@ Player = extends Entity {
 			
 			minSpeed: 0,
 			maxSpeed: @originSpeed,
-			forcePower: 1000 * FORCE_SCALE * 3.0,
+			forcePower: 1000 * PLAYER_FORCE_SCALE * 3.0/3,
 			
 			shapes: [ {						
 				radiusScale: 0.8
@@ -47,7 +47,7 @@ Player = extends Entity {
 			}*/ ]
 		}
 		level.initEntityPhysics(this)
-		@setMaxSpeed(130)
+		@setMaxSpeed(@originSpeed)
 	},
 	
 	setMaxSpeed = function(value){
@@ -55,11 +55,11 @@ Player = extends Entity {
 		var keys = {
 			120 = {
 				linearDamping = 0.04,
-				forcePower = 1000 * FORCE_SCALE * 2.0,
+				forcePower = 1000 * PLAYER_FORCE_SCALE * 2.0/2,
 			},
 			300 = {
 				linearDamping = 0.08,
-				forcePower = 1000 * FORCE_SCALE * 3.0,
+				forcePower = 1000 * PLAYER_FORCE_SCALE * 3.0/3,
 			}
 		}
 		var selectedKeys = []
@@ -108,7 +108,7 @@ Player = extends Entity {
 	
 	update = function(ev){
 		if(@level.moveJoystick.active){
-			var dir = @level.moveJoystick.dir
+			var dir = (@level.moveJoystick.dir * 2).normalizeToMax(1)
 		}else{
 			var dx, dy = 0, 0
 			if(@level.keyPressed.left) dx--
@@ -116,7 +116,7 @@ Player = extends Entity {
 			if(@level.keyPressed.up) dy--
 			if(@level.keyPressed.down) dy++
 			if(dx != 0 || dy != 0){
-				var dir = vec2(dx, dy).normalize() * 0.8
+				var dir = vec2(dx, dy).normalize()
 			}
 		}
 		if(dir.x != 0 || dir.y != 0){
@@ -132,7 +132,7 @@ Player = extends Entity {
 				print('player max speed changed', @physics.maxSpeed)
 			}
 			
-			@applyForce(dir * @physics.forcePower)
+			@applyForce(dir * @physics.forcePower, {maxSpeed = @physics.maxSpeed * #dir})
 		}else{
 			if(!@stopDampingUpdated){
 				@linearDamping = 1 - (@physics.stopLinearDamping || 0.04)

@@ -13,6 +13,7 @@ LAYER = {
 	PLAYER 				= enumVal++,
 	MONSTER_BULLETS 	= enumVal++,
 	EFFECTS 			= enumVal++,
+	DISPLAY_EFFECTS		= enumVal++,
 	PHYSICS_DEBUG 		= enumVal++,
 	COUNT 				= enumVal				
 }
@@ -43,6 +44,8 @@ GameLevel = extends BaseGameLevel {
 		time = 0,
 
 		paused = false,
+		
+		excludedSpawnAreas = [],
 	},
 	
 	__construct = function(p_level, p_invasion, p_day){
@@ -66,7 +69,7 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
-		@debugDraw = DEBUG // @view must be already created
+		// @debugDraw = DEBUG // @view must be already created
 		
 		@layers = []
 		for(var i = 0; i < LAYER.COUNT; i++){
@@ -75,6 +78,26 @@ GameLevel = extends BaseGameLevel {
 				parent = @view,
 			}
 		}
+		
+		var test = Sprite().attrs {
+			resAnim = res.getResAnim("breaks"),
+			priority = 1000,
+			parent = this,
+			pivot = vec2(0.5, 0.5),
+			pos = @size / 2,
+			touchEnabled = false,
+		}
+		test.scale = @height / test.height
+		
+		test = Sprite().attrs {
+			resAnim = res.getResAnim("scratch"),
+			priority = 1000,
+			parent = this,
+			pivot = vec2(0, 0),
+			pos = vec2(0, 0),
+			touchEnabled = false,
+		}
+		test.scale = @height / test.height
 		
 		@initLevelPhysics()
 		
@@ -89,7 +112,7 @@ GameLevel = extends BaseGameLevel {
 		@moveJoystick = Joystick().attrs {
 			// priority = 0,
 			parent = @ui,
-			pivot = vec2(0, 1),
+			pivot = vec2(-0.25, 1.25),
 			pos = vec2(0, @height),
 		}
 		
@@ -344,7 +367,6 @@ GameLevel = extends BaseGameLevel {
 		}
 	},
 	
-	excludedSpawnAreas = [],
 	findBestSpawnArea = function(pos){
 		pos || pos = @player.pos
 		// cm.log("[findBestSpawnArea] pos "+pos.x+" "+pos.y);
@@ -441,16 +463,21 @@ GameLevel = extends BaseGameLevel {
 		return vec2(x, y)
 	},
 	
+	isEntityDead = function(ent){
+		return !ent || ent.isEntDead
+	},
+	
 	deleteEntity = function(ent){
 		ent.isEntDead && throw "deleteEntity ${ent.classname}: ${ent.desc.image.id} - already dead"
-		print "deleteEntity ${ent.classname}: ${ent.desc.image.id}"
+		ent.classname != "Bullet" && print("deleteEntity ${ent.classname}: ${ent.desc.image.id}")
 		@destroyEntityPhysics(ent)
 		ent.detach()
 		ent.isEntDead = true
 	},
 	
-	isEntityDead = function(ent){
-		return !ent || ent.isEntDead
+	dieEntity = function(ent){
+		print "FAKE dieEntity"
+		@deleteEntity(ent)
 	},
 	
 	monsterSide = 0,
@@ -494,6 +521,7 @@ GameLevel = extends BaseGameLevel {
 			var monster
 			var spawnRandMonster = @wave.phaseParams.monster[0] !== null
 			count = math.min(5, count)
+			/* debug */ count *= 10
 			for(var i = 0; i < count; i++){
 				if(i == 0 || spawnRandMonster){
 					if(spawnRandMonster){
@@ -628,10 +656,12 @@ GameLevel = extends BaseGameLevel {
 	updateCamera: function(ev){
 		var idealPos = @size / 2 - @player.pos
 		var pos = @view.pos
-		var move = (idealPos - pos) * ev.dt
-		// move.x, move.y = math.round(move.x), math.round(move.y)
+		var move = (idealPos - pos) * 0.25 * ev.dt // (ev.dt * 2)
+		// var moveLen = #move
+		// var speed = #@player.linearVelocity
 		
 		pos += move
+		// pos = idealPos
 		// pos = cm.roundPoint(pos)
 		
 		var maxOffs = @width * 0.05 // math.round(@width * 0.05)
@@ -671,13 +701,14 @@ GameLevel = extends BaseGameLevel {
 	
 	update = function(ev){
 		@time = ev.time
-		@updatePhysics(ev.dt)
-		@updateCamera(ev)
 		@player.update(ev)
 		for(var _, layer in @layers){
-			for(var child = layer.firstChild; child; child = child.nextSibling){
+			// for(var child = layer.firstChild; child; child = child.nextSibling){
+			for(var _, child in layer){
 				child.update(ev)
 			}
 		}
+		@updatePhysics(ev.dt)
+		@updateCamera(ev)
 	},
 }

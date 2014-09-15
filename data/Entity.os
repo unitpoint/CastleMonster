@@ -120,7 +120,7 @@ Entity = extends BaseEntity {
 			return
 		}
 		
-		var speedEdge = 4
+		var speedEdge = @width * 0.1
 		var speed = #@linearVelocity
 		var isRunning = speed >= 2*speedEdge && @isAwake
 		// print "speed: ${speed}, isRunning: ${isRunning}"
@@ -199,9 +199,10 @@ Entity = extends BaseEntity {
 			dirIndex = @dirIndex
 		}
 		if(@dirIndex != dirIndex || @isRunning != isRunning){
-			/* if(actor == level.player && actor.dirIndex != dirIndex){
-				// cm.log("new dir: "+dirIndex);
+			/* if(this == level.player && @dirIndex != dirIndex){
+				print("new player dir: "..dirIndex);
 			} */
+			
 			var diff = dirIndex - @dirIndex
 			if(math.abs(diff) > 1){
 				var savePreIndex = dirIndex

@@ -120,6 +120,7 @@ static void registerPhysContact(OS * os)
 		// def("__newinstance", &Lib::__newinstance),
 		def("getCategoryBits", &PhysContact::getCategoryBits),
 		def("getEntity", &PhysContact::getEntity),
+		def("getIsSensor", &PhysContact::getIsSensor),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -246,6 +247,15 @@ BaseEntity * PhysContact::getEntity(int i) const
 	return 0;
 }
 
+bool PhysContact::getIsSensor(int i) const
+{
+	if(contact){
+		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
+		return fixture->IsSensor();
+	}
+	return false;
+}
+
 // =====================================================================
 // =====================================================================
 // =====================================================================
@@ -275,7 +285,7 @@ void BaseEntity::applyForce(const Vector2& viewForce, int paramsValueId)
 		os->pushValueById(paramsValueId);
 		bool noClipForce = (os->getProperty(-1, "noClipForce"), os->popBool(false));
 		if(!noClipForce){
-			float scalarSpeed = toPhysValue(getOSActorPhysicsFloat(this, "maxSpeed", 120.0f));
+			float scalarSpeed = toPhysValue((os->getProperty(-1, "maxSpeed"), os->popFloat(getOSActorPhysicsFloat(this, "maxSpeed", 120.0f))));
 			scalarSpeed *= (os->getProperty(-1, "speedScale"), os->popFloat(1.0f));
 			
 			b2Vec2 destSpeed = force;
@@ -295,8 +305,12 @@ void BaseEntity::applyForce(const Vector2& viewForce, int paramsValueId)
 				float t = src / (dest ? dest : 0.00001f);
 				if(t >= clip_edge){
 					t = 1 - (t - clip_edge) / (1 - clip_edge);
+					
 					if(t < -1) t = -1;
 					else if(t > 1) t = 1;
+					// t = t*t * (t < 0 ? -1.0f : 1.0f);
+					// t = (1 - (1-t)*(1-t)) * (t < 0 ? -1.0f : 1.0f);
+					
 					if(i == 0){
 						force.x *= t;
 					}else{

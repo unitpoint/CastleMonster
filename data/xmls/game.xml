@@ -10,6 +10,8 @@
 		<image id="players/4" file="data_debug/images/players/4.png" cols="20" />
 		<image file="data_debug/images/blood-player.png" cols="4" rows="4" />
 		<image file="data_debug/images/blood-monster.png" cols="4" rows="4" />
+		<image file="data_debug/images/breaks.png" />
+		<image file="data_debug/images/scratch.png" />
 		
 		<image id="monsters/zmeyacherepaha" file="data_debug/images/monsters/zmeyacherepaha.png" cols="20" />
 		<image id="monsters/wood_elf" file="data_debug/images/monsters/wood_elf.png" cols="20" />

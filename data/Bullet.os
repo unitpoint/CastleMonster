@@ -55,10 +55,12 @@ Bullet = extends Entity {
 			lifeTimeSec = 2,
 		}, params)
 		
-		print "spawnBullet: ${params}"
+		// print "spawnBullet: ${params}"
 		
 		@initEntity(params)
-		@parent = @level.layers[LAYER.MONSTER_BULLETS]
+		
+		var isPlayerBullet = (params.physics.categoryBits & PHYS_CAT_BIT_PLAYER_FIRE) != 0
+		@parent = @level.layers[isPlayerBullet ? LAYER.EFFECTS : LAYER.MONSTER_BULLETS]
 		
 		@playAnim(params.image.ms/1000, params.image.animation)
 		
@@ -78,12 +80,12 @@ Bullet = extends Entity {
 		var otherName
 		// var other = i ? contact.m_shape1 : contact.m_shape2;
 		var otherCategoryBits = contact.getCategoryBits(1-i)
-		if(otherCategoryBits & PHYS_CAT_BIT_PLAYER){
-			if(@desc.physics.categoryBits & PHYS_CAT_BIT_MONSTER_FIRE){
+		if((otherCategoryBits & PHYS_CAT_BIT_PLAYER) != 0){
+			if((@desc.physics.categoryBits & PHYS_CAT_BIT_MONSTER_FIRE) != 0){
 				// print('monster fire is touched', @desc)
 				contact.getEntity(1-i).onEnemyTouched(this) // other.m_body.actor.onEnemyTouched(this);
 			}
-		}else if(otherCategoryBits & PHYS_CAT_BIT_MONSTER){
+		}else if((otherCategoryBits & PHYS_CAT_BIT_MONSTER) != 0){
 			otherName = "enemy"
 			
 			var target = contact.getEntity(1-i) // other.m_body.actor;
@@ -130,7 +132,7 @@ Bullet = extends Entity {
 			}else{
 				logStr = logStr.."invisible"
 			}
-		}else if(otherCategoryBits & PHYS_CAT_BIT_STATIC){
+		}else if((otherCategoryBits & PHYS_CAT_BIT_STATIC) != 0){
 			// cm.sound.play({actor:"bullet", channel:"ric", sound:["temp/ric1", "temp/ric3"], lock_ms:10000, priority:0});
 		}else{
 			otherName = otherCategoryBits

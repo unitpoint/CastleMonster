@@ -87,6 +87,7 @@ public:
 
 	int getCategoryBits(int i) const;
 	BaseEntity * getEntity(int i) const;
+	bool getIsSensor(int i) const;
 };
 
 float toPhysValue(float a);
