@@ -58,6 +58,53 @@ static void registerBaseGameLevel(OS * os)
 		{
 			return new BaseGameLevel();
 		}
+
+		static int findPath(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(BaseGameLevel*);
+			if(params < 7){
+				os->setException("7 arguments required");
+				os->handleException();
+				return 0;
+			}
+			if(!os->isFunction(-params+6)){
+				os->setException("seven argument must be function");
+				os->handleException();
+				return 0;
+			}
+			// Vector2 p1 = ObjectScript::CtypeValue<Vector2>::getArg(os, -params+0);
+			// Vector2 p2 = ObjectScript::CtypeValue<Vector2>::getArg(os, -params+1);
+			// BaseEntity * ent = ObjectScript::CtypeValue<BaseEntity*>::getArg(os, -params+2);
+			int x1 = os->toInt(-params+0);
+			int y1 = os->toInt(-params+1);
+			int x2 = os->toInt(-params+2);
+			int y2 = os->toInt(-params+3);
+			bool fly = os->toBool(-params+4);
+			bool allowNotFinishedPath = os->toBool(-params+5);
+			int callbackOSValueId = os->getValueId(-params+6);
+			
+			if(os->isExceptionSet()){ // check for error arguments
+				os->handleException();
+				return 0;
+			}
+			self->findPath(x1, y1, x2, y2, fly, allowNotFinishedPath, callbackOSValueId);
+			return 0;
+		}
+		
+		static int entityPosToPhysCellPos(OS * os, int params, int, int need_ret_values, void*)
+		{
+			OS_GET_SELF(BaseGameLevel*);
+			int x, y;
+			Vector2 pos = ObjectScript::CtypeValue<Vector2>::getArg(os, -params+0);
+			self->entityPosToPhysCellPos(pos, x, y);
+			if(need_ret_values >= 2){
+				os->pushNumber(x);
+				os->pushNumber(y);
+				return 2;
+			}
+			ObjectScript::pushCtypeValue(os, Vector2((float)x, (float)y));
+			return 1;
+		}
 	};
 
 	OS::FuncDef funcs[] = {
@@ -71,6 +118,12 @@ static void registerBaseGameLevel(OS * os)
 		DEF_PROP(debugDraw, BaseGameLevel, DebugDraw),
 		DEF_GET(physBlockCount, BaseGameLevel, PhysBlockCount),
 		def("getPhysBlock", &BaseGameLevel::getPhysBlock),
+		DEF_GET(findPathInProgress, BaseGameLevel, FindPathInProgress),
+		def("updatePath", &BaseGameLevel::updatePath),
+		{"findPath", &Lib::findPath},
+		{"entityPosToPhysCellPos", &Lib::entityPosToPhysCellPos},
+		def("physCellPosToEntityPos", &BaseGameLevel::physCellPosToEntityPos),
+		def("traceEntities", &BaseGameLevel::traceEntities),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -110,10 +163,10 @@ bool __registerPhysBlock = addRegFunc(registerPhysBlock);
 static void registerPhysContact(OS * os)
 {
 	struct Lib {
-		static PhysContact * __newinstance()
+		/* static PhysContact * __newinstance()
 		{
-			return new PhysContact(NULL);
-		}
+			return new PhysContact();
+		} */
 	};
 
 	OS::FuncDef funcs[] = {
@@ -331,14 +384,22 @@ void BaseEntity::applyForce(const Vector2& viewForce, int paramsValueId)
 
 BaseGameLevel::BaseGameLevel()
 {
+	pathFindThread.level = this;
 	accumTimeSec = 0;
 	physWorld = NULL;
 	physCells = NULL;
+	physLayerWidth = 0;
+	physLayerHeight = 0;
+	physCellWidth = 0;
+	physCellHeight = 0;
+	// findPathInProgress = false;
 	platfromEventId = Input::instance.addEventListener(Input::event_platform, CLOSURE(this, &BaseGameLevel::onPlatformEvent));
+	physContactShare = new PhysContact;
 }
 
 BaseGameLevel::~BaseGameLevel()
 {
+	pathFindThread.exit();
 	debugDraw = NULL;
 	destroyAllBodies();
 	Input::instance.removeEventListener(platfromEventId);
@@ -381,8 +442,8 @@ void BaseGameLevel::onPlatformEvent(Event * p_ev)
 void BaseGameLevel::setPhysSize(int width, int height)
 {
 	OX_ASSERT(!physCells);
-	physCellWidth = width;
-	physCellHeight = height;
+	physLayerWidth = width;
+	physLayerHeight = height;
 	physCells = new PhysCell[width * height];
 }
 
@@ -394,12 +455,581 @@ void BaseGameLevel::setPhysCell(int x, int y, EPhysCellType type)
 PhysCell * BaseGameLevel::getPhysCell(int x, int y)
 {
 	OX_ASSERT(physCells);
-	OX_ASSERT(x >= 0 && x < physCellWidth);
-	OX_ASSERT(y >= 0 && y < physCellHeight);
-	if(physCells && x >= 0 && x < physCellWidth && y >= 0 && y < physCellHeight){
-		return physCells + (y*physCellWidth + x);
+	OX_ASSERT(x >= 0 && x < physLayerWidth);
+	OX_ASSERT(y >= 0 && y < physLayerHeight);
+	if(physCells && x >= 0 && x < physLayerWidth && y >= 0 && y < physLayerHeight){
+		return physCells + (y*physLayerWidth + x);
 	}
 	return NULL;
+}
+
+bool BaseGameLevel::isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly)
+{
+	if( (x - 2-1 <= x2 && x2 <= x + 2+1 && y - 2-1 <= y2 && y2 <= y + 2+1) 
+			|| (x - 2-1 <= x1 && x1 <= x + 2+1 && y - 2-1 <= y1 && y1 <= y + 2+1) )
+	{
+		PhysCell * cell = getPhysCell(x, y);
+		if(cell){
+			switch(cell->type){
+			case PHYS_WATER:
+				return !fly;
+								
+			case PHYS_SOLID:
+				return true;
+			}
+		}
+		return false;
+	}
+
+	PhysCell * cell = getPhysCell(x, y);
+	if(cell->mipmapCalculated[fly]){
+		return cell->mipmapBlocked[fly];
+	}
+	cell->mipmapCalculated[fly] = true;
+
+	int startX = x-2, endX = x+2;
+	int startY = y-2, endY = y+2;
+	for(int px = startX; px <= endX; px++){
+		for(int py = startY; py <= endY; py++){
+			PhysCell * curCell = getPhysCell(px, py);
+			if(curCell){
+				switch(curCell->type){
+				case PHYS_WATER:
+					return cell->mipmapBlocked[fly] = !fly;
+									
+				case PHYS_SOLID:
+					return cell->mipmapBlocked[fly] = true;
+				}
+			}
+		}
+	}
+	return cell->mipmapBlocked[fly] = false;
+}
+
+int BaseGameLevel::physCellPosToId(int x, int y)
+{
+	return y * physLayerHeight + x;
+}
+
+static float dist(int x, int y)
+{
+	if(x < 0) x = -x;
+	if(y < 0) y = -y;
+	if(x > y){
+		return x + y*0.5f;
+	}
+	return y + x*0.5f;
+}
+
+PathFindThread::PathFindThread()
+{
+	struct Lib {
+		static void * start(void * p)
+		{
+			PathFindThread * self = (PathFindThread*)p;
+			self->threadFunc();
+			return NULL;
+		}
+	};
+	state = READY_FOR_NEW_TASK;
+	level = NULL;
+	x1 = y1 = x2 = y2 = 0;
+	fly = allowNotFinishedPath = false;
+	callbackOSValueId = 0;
+	finishedPath = false;
+
+	pthread_create(&thread, 0, Lib::start, this);
+}
+
+PathFindThread::~PathFindThread()
+{
+}
+
+void PathFindThread::exit()
+{
+	setState(WAIT_EXIT);
+	while(getState() != EXIT){
+		sleep(10);
+	}
+	int i = 0;
+}
+
+PathFindThread::EState PathFindThread::getState()
+{
+	MutexAutoLock autoLock(m);
+	return state;
+}
+
+void PathFindThread::setState(EState a)
+{
+	MutexAutoLock autoLock(m);
+	state = a;
+}
+
+void PathFindThread::threadFunc()
+{
+	for(;;){
+		bool run = false;
+		do{
+			MutexAutoLock autoLock(m);
+			if(state == WAIT_EXIT){
+				state = EXIT;
+				return;
+			}
+			if(state == FINDING || state == EXIT){
+				OX_ASSERT(false);
+			}
+			if(state == WAIT_BREAK_FINDING){
+				state = READY_FOR_NEW_TASK;
+				reversePath.clear();
+				nodes.clear();
+				openNodes.clear();
+				finishedPath = false;
+				break;
+			}
+			if(state == READY_FOR_NEW_TASK){
+				break;
+			}
+			if(state != NEW_TASK){
+				break;
+			}
+			state = FINDING;
+			reversePath.clear();
+			nodes.clear();
+			openNodes.clear();
+			finishedPath = false;
+			run = true;
+		}while(false);
+		if(!run){
+			sleep(10);
+			continue;
+		}
+
+		spPathNode node = new PathNode();
+		node->x = x1;
+		node->y = y1;
+		node->closed = true;
+		node->id = level->physCellPosToId(node->x, node->y);
+		node->weightH = dist(x2 - node->x, y2 - node->y);
+		node->weight = node->weightG + node->weightH;
+				
+		nodes[node->id] = node;
+				
+		int endNodeId = level->physCellPosToId(x2, y2);
+		spPathNode curNode = node;
+
+		int maxSteps = 10000;
+		for(int steps = 0; getState() == FINDING; steps++, sleep(0)){
+			if(curNode->id == endNodeId || steps >= maxSteps){
+				MutexAutoLock autoLock(m);
+				if(curNode->id != endNodeId && !allowNotFinishedPath){
+					state = FINISHED;
+					finishedPath = false;
+					break;
+				}
+				reversePath.push_back(Vector2((float)curNode->x, (float)curNode->y));
+				while(curNode->parent){
+					curNode = curNode->parent; 
+					reversePath.push_back(Vector2((float)curNode->x, (float)curNode->y));
+				}
+				state = FINISHED;
+				finishedPath = true;
+				break;
+			}
+			spPathNode bestNode = NULL;
+			float bestWeight = FLT_MAX;
+						
+			int curX = curNode->x;
+			int curY = curNode->y;
+						
+			int startX = max(0, curX-1);
+			int endX = min(level->physLayerWidth-1, curX+1);
+						
+			int startY = max(0, curY-1);
+			int endY = min(level->physLayerHeight-1, curY+1);
+						
+			for(int px = startX; px <= endX; px++){
+				int dx = curX - px;
+				for(int py = startY; py <= endY; py++){
+					int dy = curY - py;
+					if(!(dx | dy)){
+						continue;
+					}
+					int id = level->physCellPosToId(px, py);
+					if(nodes.find(id) == nodes.end()){
+						if(level->isPhysCellBlocked(px, py, x1, y1, x2, y2, fly)){
+							continue;
+						}
+						spPathNode node = new PathNode();
+						node->x = px;
+						node->y = py;
+						node->weightG = dist(dx, dy) + curNode->weightG;
+						node->weightH = dist(x2 - px, y2 - py);
+						node->weight = node->weightG + node->weightH;
+						node->id = id;
+						node->closed = false;
+						node->parent = curNode.get();
+									
+						nodes[id] = node;
+						openNodes[id] = node;
+						// cm.log("[path] new node "+gid+", pos "+px+" "+py);
+					}else{
+						if(node->closed){
+							continue;
+						}
+						float weightG = dist(dx, dy) + curNode->weightG;
+						if(node->weightG > weightG){
+							node->weightG = weightG;
+							node->weight = weightG + node->weightH;
+							node->parent = curNode.get();
+							// node.closed = false;
+							// cm.log("[path] node "+node.gid+" => parent "+gid);
+						}							
+					}
+					if(bestWeight > node->weight){
+						bestWeight = node->weight;
+						bestNode = node;
+					}
+				}
+			}
+			if(bestNode){
+				curNode = bestNode; 
+				curNode->closed = true;
+				// delete openNodes[ curNode.gid ];
+				PathNodes::iterator it = openNodes.find(curNode->id);
+				if(it != openNodes.end()) openNodes.erase(it);
+				continue;
+			}
+			if(curNode->parent){
+				int i = 0;
+				do{
+					curNode = curNode->parent;
+				}while(curNode && ++i < 10);
+				if(curNode){
+					continue;
+				}
+			}
+			curNode = NULL;
+			bestWeight = FLT_MAX;
+			PathNodes::iterator it = openNodes.begin();
+			for(; it != openNodes.end(); ++it){
+				spPathNode node = it->second; // openNodes[i];
+				if(bestWeight > node->weight){
+					bestWeight = node->weight;
+					curNode = node;
+				}
+			}
+			if(!curNode){
+				// cm.log("[path] not found");
+				// self.findPathInProgress = false;
+				// callback(false);
+				MutexAutoLock autoLock(m);
+				state = FINISHED;
+				finishedPath = false;
+				break;
+			}
+			curNode->closed = true;
+			// delete openNodes[ curNode.gid ];
+			it = openNodes.find(curNode->id);
+			if(it != openNodes.end()) openNodes.erase(it);
+		}
+	}
+}
+
+bool BaseGameLevel::getFindPathInProgress()
+{
+	MutexAutoLock autoLock(pathFindThread.m);
+	return pathFindThread.state != PathFindThread::READY_FOR_NEW_TASK;
+}
+
+void BaseGameLevel::updatePath(ObjectScript::UpdateEvent*)
+{
+	MutexAutoLock autoLock(pathFindThread.m);
+	if(pathFindThread.state == PathFindThread::FINISHED){
+		if(pathFindThread.callbackOSValueId){
+			// pathFindThread.state = PathFindThread::PROCESSING;
+			ObjectScript::OS * os = ObjectScript::os;
+			os->pushValueById(pathFindThread.callbackOSValueId);
+			OX_ASSERT(os->isFunction());
+			os->pushNull(); // this
+			if(pathFindThread.finishedPath){
+				os->newArray(pathFindThread.reversePath.size());
+				std::vector<Vector2>::reverse_iterator it = pathFindThread.reversePath.rbegin();
+				for(; it != pathFindThread.reversePath.rend(); ++it){
+					ObjectScript::pushCtypeValue(os, *it);
+					os->addProperty(-2);
+				}
+				os->call(1);
+			}else{
+				os->call();
+			}
+			os->handleException();
+			unregisterOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
+			pathFindThread.callbackOSValueId = 0;
+		}
+		pathFindThread.state = PathFindThread::READY_FOR_NEW_TASK;
+	}
+}
+
+void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allowNotFinishedPath, int callbackOSValueId)
+{
+	// int x1 = (int)p1.x / physCellWidth, y1 = (int)p1.y / physCellHeight;
+	// int x2 = (int)p2.x / physCellWidth, y2 = (int)p2.y / physCellHeight;
+	OX_ASSERT(x1 >= 0 && x1 < physLayerWidth && y1 >= 0 && y1 < physLayerHeight);
+	OX_ASSERT(x2 >= 0 && x2 < physLayerWidth && y2 >= 0 && y2 < physLayerHeight);
+	if(!callbackOSValueId){
+		OX_ASSERT(false);
+		return;
+	}
+	
+	ObjectScript::OS * os = ObjectScript::os;
+	MutexAutoLock autoLock(pathFindThread.m);
+	if(pathFindThread.state == PathFindThread::READY_FOR_NEW_TASK){
+		pathFindThread.x1 = x1;
+		pathFindThread.y1 = y1;
+		pathFindThread.x2 = x2;
+		pathFindThread.y2 = y2;
+		pathFindThread.fly = fly;
+		pathFindThread.allowNotFinishedPath = allowNotFinishedPath;
+		pathFindThread.callbackOSValueId = callbackOSValueId;
+		pathFindThread.state = PathFindThread::NEW_TASK;
+		registerOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
+		return;
+	}
+	os->pushValueById(callbackOSValueId);
+	OX_ASSERT(os->isFunction());
+	os->pushNull(); // this
+	os->call(0);
+	os->handleException();
+}
+
+/*
+	// var startTime = cm.getTimeMS();
+				
+	// this.findTiledMapPathTime = this.time;
+	// findPathInProgress = true;
+	// bool fly = ent->getPhysicsBool("fly", false);
+
+	spPathNode node = new PathNode();
+	node->x = x1;
+	node->y = y1;
+	node->closed = true;
+	node->id = physCellPosToId(node->x, node->y);
+	node->weightH = dist(x2 - node->x, y2 - node->y);
+	node->weight = node->weightG + node->weightH;
+				
+	typedef std::map<int, spPathNode> PathNodes;
+	PathNodes nodes;
+	PathNodes openNodes;
+	
+	nodes[node->id] = node;
+				
+	int endNodeId = physCellPosToId(x2, y2);
+	spPathNode curNode = node;
+
+	int maxSteps = 500;
+	for(int steps = 0;; steps++){
+		if(curNode->id == endNodeId || steps >= maxSteps){
+			if(curNode->id != endNodeId && !allowNotFinishedPath){
+				break;
+			}
+			float weight = curNode->weight;
+
+			std::vector<Vector2> path;
+			path.push_back(Vector2((float)curNode->x, (float)curNode->y));
+			while(curNode->parent){
+				curNode = curNode->parent; 
+				path.push_back(Vector2((float)curNode->x, (float)curNode->y));
+			}
+			// path.reverse();
+			// var dt = cm.getTimeMS() - startTime;
+			// cm.log("[path] found weight "+cm.round(path[path.length-1].weight, 2)+", nodes "+path.length+", iter "+(iterateNum+1)+", steps "+allSteps+", dt "+cm.round(dt, 2));
+
+			// self.findPathInProgress = false;
+			ObjectScript::OS * os = ObjectScript::os;
+			if(curNode->id != endNodeId && path.size() < 4){
+				os->printf("[path] SKIP weight %.f, len %d, steps %d\n", weight, path.size(), steps);
+				break;
+			}
+			os->printf("[path] found weight %.f, len %d, steps %d\n", weight, path.size(), steps);
+
+			os->pushValueById(callbackOSValueId);
+			OX_ASSERT(os->isFunction());
+			os->pushNull(); // this
+			os->newArray(path.size());
+			std::vector<Vector2>::reverse_iterator it = path.rbegin();
+			for(; it != path.rend(); ++it){
+				ObjectScript::pushCtypeValue(os, *it);
+				os->addProperty(-2);
+			}
+			os->call(1);
+			os->handleException();
+			return true; // path;
+		}
+		spPathNode bestNode = NULL;
+		float bestWeight = FLT_MAX;
+						
+		int curX = curNode->x;
+		int curY = curNode->y;
+						
+		int startX = max(0, curX-1);
+		int endX = min(physLayerWidth-1, curX+1);
+						
+		int startY = max(0, curY-1);
+		int endY = min(physLayerHeight-1, curY+1);
+						
+		for(int px = startX; px <= endX; px++){
+			int dx = curX - px;
+			for(int py = startY; py <= endY; py++){
+				int dy = curY - py;
+				if(!(dx | dy)){
+					continue;
+				}
+				int id = physCellPosToId(px, py);
+				if(nodes.find(id) == nodes.end()){
+					if(isPhysCellBlocked(px, py, x1, y1, x2, y2, fly)){
+						continue;
+					}
+					spPathNode node = new PathNode();
+					node->x = px;
+					node->y = py;
+					node->weightG = dist(dx, dy) + curNode->weightG;
+					node->weightH = dist(x2 - px, y2 - py);
+					node->weight = node->weightG + node->weightH;
+					node->id = id;
+					node->closed = false;
+					node->parent = curNode.get();
+									
+					nodes[id] = node;
+					openNodes[id] = node;
+					// cm.log("[path] new node "+gid+", pos "+px+" "+py);
+				}else{
+					if(node->closed){
+						continue;
+					}
+					float weightG = dist(dx, dy) + curNode->weightG;
+					if(node->weightG > weightG){
+						node->weightG = weightG;
+						node->weight = weightG + node->weightH;
+						node->parent = curNode.get();
+						// node.closed = false;
+						// cm.log("[path] node "+node.gid+" => parent "+gid);
+					}							
+				}
+				if(bestWeight > node->weight){
+					bestWeight = node->weight;
+					bestNode = node;
+				}
+			}
+		}
+		if(bestNode){
+			curNode = bestNode; 
+			curNode->closed = true;
+			// delete openNodes[ curNode.gid ];
+			PathNodes::iterator it = openNodes.find(curNode->id);
+			if(it != openNodes.end()) openNodes.erase(it);
+			continue;
+		}
+		if(curNode->parent){
+			int i = 0;
+			do{
+				curNode = curNode->parent;
+			}while(curNode && ++i < 10);
+			if(curNode){
+				continue;
+			}
+		}
+		curNode = NULL;
+		bestWeight = FLT_MAX;
+		PathNodes::iterator it = openNodes.begin();
+		for(; it != openNodes.end(); ++it){
+			spPathNode node = it->second; // openNodes[i];
+			if(bestWeight > node->weight){
+				bestWeight = node->weight;
+				curNode = node;
+			}
+		}
+		if(!curNode){
+			// cm.log("[path] not found");
+			// self.findPathInProgress = false;
+			// callback(false);
+			break;
+		}
+		curNode->closed = true;
+		// delete openNodes[ curNode.gid ];
+		it = openNodes.find(curNode->id);
+		if(it != openNodes.end()) openNodes.erase(it);
+	}
+	// self.findPathInProgress = false;
+	ObjectScript::OS * os = ObjectScript::os;
+	os->pushValueById(callbackOSValueId);
+	OX_ASSERT(os->isFunction());
+	os->pushNull(); // this
+	os->call(0);
+	os->handleException();
+	return false;
+}
+*/
+
+void BaseGameLevel::entityPosToPhysCellPos(const Vector2& pos, int& x, int& y)
+{
+	x = (int)pos.x / physCellWidth;
+	y = (int)pos.y / physCellHeight;
+}
+
+Vector2 BaseGameLevel::physCellPosToEntityPos(int x, int y)
+{
+	return Vector2(
+		(float)(x * physCellWidth + physCellWidth/2),
+		(float)(y * physCellHeight + physCellHeight/2)
+		);
+}
+
+bool BaseGameLevel::traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly)
+{
+	Vector2 _p1 = ent1->getPosition();
+	Vector2 _p2 = ent2->getPosition();
+	float x1 = floorf(_p1.x / physCellWidth), y1 = floorf(_p1.y / physCellHeight);
+	float x2 = floorf(_p2.x / physCellWidth), y2 = floorf(_p2.y / physCellHeight);
+
+	float dx = x2 - x1;
+	float dy = y2 - y1;
+	// cm.log("[trace] "+dx+" "+dy);
+	// return false;
+	if(dx == 0 && dy == 0){
+		return false;
+	}
+	float dxAbs = fabs(dx);
+	float dyAbs = fabs(dy);
+	int count = 0;  
+	if(dxAbs >= dyAbs){
+		dx = dx >= 0 ? 1.0f : -1.0f;
+		dy /= dxAbs;
+		count = (int)dxAbs;
+	}else{
+		dx /= dyAbs;
+		dy = dy >= 0 ? 1.0f : -1.0f;
+		count = (int)dyAbs;
+	}
+	float x = x1, y = y1;
+	for(; count > 0; count--){
+		x += dx;
+		y += dy;
+		PhysCell * cell = getPhysCell((int)x, (int)y);
+		if(cell){
+			switch(cell->type){
+			case PHYS_WATER:
+				if(fly){
+					break;
+				}
+				// no break
+							
+			case PHYS_SOLID:
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 const float PHYS_SCALE = 1.0f / 100.0f;
@@ -437,14 +1067,14 @@ spPhysBlock BaseGameLevel::getPhysBlock(int i) const
 void BaseGameLevel::initPhysBlocks()
 {
 	OX_ASSERT(physBlocks.size() == 0);
-	int cellWidth = 16, cellHeight = 16;
-	for(int y = 0; y < physCellHeight; y++){
-		for(int x = 0; x < physCellWidth; x++){
+	// int cellWidth = 16, cellHeight = 16;
+	for(int y = 0; y < physLayerHeight; y++){
+		for(int x = 0; x < physLayerWidth; x++){
 			PhysCell * cell = getPhysCell(x, y);
-			if(cell->type == PHYS_UNKNOWN || cell->parsed){
+			if(cell->type == PHYS_EMPTY || cell->parsed){
 				continue;
 			}
-			int max_x = physCellWidth-1, max_y = physCellHeight-1;
+			int max_x = physLayerWidth-1, max_y = physLayerHeight-1;
 			for(int ax = x+1; ax <= max_x; ax++){
 				PhysCell * ac = getPhysCell(ax, y);
 				if(ac->parsed || ac->type != cell->type){
@@ -468,8 +1098,8 @@ void BaseGameLevel::initPhysBlocks()
 			}
 			spPhysBlock block = new PhysBlock();
 			block->type = cell->type;
-			block->size = Vector2((float)(max_x - x + 1) * cellWidth, (float)(max_y - y + 1) * cellHeight);
-			block->pos = Vector2((float)x * cellWidth, (float)y * cellHeight);
+			block->size = Vector2((float)(max_x - x + 1) * physCellWidth, (float)(max_y - y + 1) * physCellHeight);
+			block->pos = Vector2((float)x * physCellWidth, (float)y * physCellHeight);
 			physBlocks.push_back(block);
 			
 			for(int ax = x; ax <= max_x; ax++){
@@ -762,15 +1392,13 @@ void BaseGameLevel::updatePhysics(float dt)
 	ObjectScript::OS * os = ObjectScript::os;
 	b2Contact * c = physWorld->GetContactList();
 	for(; c; c = c->GetNext()){
-		spPhysContact physContact;
 		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
 		if(ent){
 			ObjectScript::pushCtypeValue(os, ent);
 			os->getProperty("onPhysicsContact");
 			OX_ASSERT(os->isFunction());
 			ObjectScript::pushCtypeValue(os, ent); // this
-			physContact = new PhysContact(c);
-			ObjectScript::pushCtypeValue(os, physContact);
+			ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
 			os->pushNumber(0);
 			os->call(2, 1);
 			if(os->popBool()){
@@ -783,15 +1411,12 @@ void BaseGameLevel::updatePhysics(float dt)
 			os->getProperty("onPhysicsContact");
 			OX_ASSERT(os->isFunction());
 			ObjectScript::pushCtypeValue(os, ent); // this
-			if(!physContact) physContact = new PhysContact(c);
-			ObjectScript::pushCtypeValue(os, physContact);
+			ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
 			os->pushNumber(1);
 			os->call(2);
 		}
-		if(physContact){
-			physContact->reset();
-		}
 	}
+	physContactShare->contact = NULL;
 }
 
 void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
@@ -805,6 +1430,9 @@ void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
 	physWorld = new b2World(gravity);
 	physWorld->SetAllowSleeping(true);
 	physWorld->SetDestructionListener(this);
+
+	physCellWidth = (int)size.x / physLayerWidth;
+	physCellHeight = (int)size.x / physLayerHeight;
 
 	initPhysBlocks();
 }

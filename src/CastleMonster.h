@@ -30,7 +30,7 @@ enum EPhysCellType
 	PHYS_SOLID,
 	PHYS_PLAYER_SPAWN,
 	PHYS_MONSTER_SPAWN,
-	PHYS_UNKNOWN
+	PHYS_EMPTY
 };
 
 #define PHYS_DEF_FIXED_ROTATION		true
@@ -44,11 +44,18 @@ struct PhysCell
 {
 	EPhysCellType type;
 	bool parsed;
+	
+	bool mipmapCalculated[2];
+	bool mipmapBlocked[2];
 
 	PhysCell()
 	{
-		type = PHYS_UNKNOWN;
+		type = PHYS_EMPTY;
 		parsed = false;
+		mipmapCalculated[0] = false;
+		mipmapBlocked[0] = false;
+		mipmapCalculated[1] = false;
+		mipmapBlocked[1] = false;
 	}
 };
 
@@ -64,7 +71,7 @@ public:
 
 	PhysBlock(): pos(0, 0), size(0, 0)
 	{
-		type = PHYS_UNKNOWN;
+		type = PHYS_EMPTY;
 	}
 
 	Vector2 getPos() const { return pos; }
@@ -82,8 +89,14 @@ public:
 
 	b2Contact * contact;
 
-	PhysContact(b2Contact * c){ contact = c; }
-	void reset(){ contact = NULL; }
+	PhysContact(){ contact = NULL; }
+	// void reset(){ contact = NULL; }
+
+	PhysContact * withContact(b2Contact * c)
+	{ 
+		contact = c;
+		return this;
+	}
 
 	int getCategoryBits(int i) const;
 	BaseEntity * getEntity(int i) const;
@@ -157,6 +170,72 @@ public:
 	}
 };
 
+DECLARE_SMART(PathNode, spPathNode);
+class PathNode: public Object
+{
+public:
+	OS_DECLARE_CLASSINFO(PathNode);
+
+	int x, y;
+	float weightG;
+	float weightH;
+	float weight;
+	int id;
+	bool closed;
+	PathNode * parent;
+		
+	PathNode()
+	{
+		x = y = id = 0;
+		weightG = weightH = weight = 0;
+		closed = false;
+		parent = NULL;
+	}
+};
+
+struct PathFindThread
+{
+	enum EState
+	{
+		READY_FOR_NEW_TASK,
+		NEW_TASK,
+		FINDING,
+		FINISHED,
+		WAIT_BREAK_FINDING,
+		WAIT_EXIT,
+		EXIT
+	};
+
+	Mutex m;
+	pthread_t thread;
+
+	BaseGameLevel * level;
+
+	EState state;
+	int x1, y1;
+	int x2, y2;
+	bool fly, allowNotFinishedPath;
+	int callbackOSValueId;
+
+	bool finishedPath;
+	std::vector<Vector2> reversePath;
+
+	typedef std::map<int, spPathNode> PathNodes;
+	PathNodes nodes;
+	PathNodes openNodes;
+
+	PathFindThread();
+	~PathFindThread();
+
+	void threadFunc();
+
+	EState getState();
+	void setState(EState);
+
+	void exit();
+};
+
+
 class BaseGameLevel: public oxygine::Actor, protected b2DestructionListener
 {
 public:
@@ -186,19 +265,34 @@ public:
 	int getPhysBlockCount() const;
 	spPhysBlock getPhysBlock(int i) const;
 
+	bool getFindPathInProgress();
+	void updatePath(ObjectScript::UpdateEvent*);
+	// bool findPath(const Vector2& p1, const Vector2& p2, BaseEntity * ent, bool fly, bool allowNotFinishedPath, int callbackOSValueId);
+	void findPath(int x1, int y1, int x2, int y2, bool fly, bool allowNotFinishedPath, int callbackOSValueId);
+	bool traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly);
+	void entityPosToPhysCellPos(const Vector2&, int& x, int& y);
+	Vector2 physCellPosToEntityPos(int x, int y);
+
 protected:
+	friend struct PathFindThread;
 
 	spBox2DDraw debugDraw;
 
 	float accumTimeSec;
 	b2World * physWorld;
 	PhysCell * physCells;
+	int physLayerWidth;
+	int physLayerHeight;
 	int physCellWidth;
 	int physCellHeight;
+
+	PathFindThread pathFindThread;
 
 	std::vector<spPhysBlock> physBlocks;
 	// std::vector<spBaseEntity> entities;
 	std::vector<b2Body*> waitBodiesToDestroy;
+
+	spPhysContact physContactShare;
 
 	int platfromEventId;
 	void onPlatformEvent(Event*);
@@ -211,6 +305,10 @@ protected:
 
 	PhysCell * getPhysCell(int x, int y);
 	void initPhysBlocks();
+
+	bool isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly);
+	int physCellPosToId(int x, int y);
+	float dist(int x, int y);
 
 	/// Called when any joint is about to be destroyed due
 	/// to the destruction of one of its attached bodies.
