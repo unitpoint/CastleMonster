@@ -232,5 +232,17 @@ Entity = extends BaseEntity {
 				// @resAnimFrameNum = dirIndex*2 + math.round(math.random())
 			}
 		}
-	},	
+	},
+	
+	playPainSound = function(){
+		// print "FAKE playPainSound in ${@classname}"
+	},
+	
+	playIdleSound = function(){
+		// print "FAKE playIdleSound in ${@classname}"
+	},
+	
+	onEnemyTouched = function(){
+		// print "FAKE onEnemyTouched in ${@classname}"
+	},
 }

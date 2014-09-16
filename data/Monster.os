@@ -54,7 +54,7 @@ Monster = extends Entity {
 				forcePower = 1000,
 				inversePower = 2000,
 				stopPercent = 10,
-				stopDurationMS = [1.0, 3.0],
+				stopDurationSec = [1.0, 3.0],
 				aimOnDamage = "inverse",
 				aimIntervalSec = 3.0,
 				aimDurationSec = [2.0, 4.0],
@@ -113,9 +113,7 @@ Monster = extends Entity {
 			if(level.isEntityDead(@target)){
 				@target = null
 				var bestDist = 99999999999
-				var monsterList = level.layers[LAYER.MONSTERS]
-				for(var i = 0; i < monsterList.length; i++){
-					var monster = monsterList[i]
+				for(var i, monster in level.layers[LAYER.MONSTERS]){
 					if(monster !== this && monster.desc.battleSide != @desc.battleSide){
 						var dist = #(@pos - monster.pos)
 						if(bestDist > dist){
@@ -134,28 +132,27 @@ Monster = extends Entity {
 		
 		var checkPath = !@path || level.time >= @pathNextTime
 		if(checkPath){
-			var dist = 0
+			var dist = 99999999
 			if(@isEntVisible){
 				dist = #(@pos - @target.pos)
 				// cm.log("[dist] "+dist+" "+@desc.image.id)
 			}
-			if(dist < 200 && level.traceActors(this, @target, @desc.physics.fly)){
+			if(dist < 200 && level.traceEntities(this, @target, @desc.physics.fly)){
 				@path = false
 				@pathNextTime = level.time + math.random(0.1, 0.2)
 				return // false
 			}
-		}
-
-		if(checkPath){
 			@pathNextTime = level.time + math.random(0.1, 0.2)
-			var p1 = level.actorToTileMapPos(this)
-			var p2 = level.actorToTileMapPos(@target)
+			
+			var p1 = level.entityPosToPhysCellPos(@pos)
+			var p2 = level.entityPosToPhysCellPos(@target.pos)
+			// print "p1: ${p1} ${@pos}, p2: ${p2} ${@target.pos}"
 			
 			if(@path && @pathValid <= 10){
 				@pathValid++
 				var node = @path[@path.length-1]
 				if(math.abs(node.x - p2.x) <= 1 && math.abs(node.y - p2.y) <= 1){
-					// cm.log("[path] cur path is still valid")
+					// print("[path] cur path is still valid for ${@classname}#${@__id}")
 					return
 				}
 			}
@@ -164,8 +161,10 @@ Monster = extends Entity {
 			@pathValid = 0
 			
 			var self = this
-			level.findTiledMapPath(p1, p2, this, @desc.physics.fly, true, function(path){
-				if(!path || cm.isActorDead(self)){
+			// print "start finding path for ${@classname}#${@__id}"
+			level.findPath(p1.x, p1.y, p2.x, p2.y, @desc.physics.fly, true, function(path){
+				// print "path found for ${self.classname}#${self.__id}: ${path}"
+				if(!path || level.isEntityDead(self)){
 					return
 				}
 				self.path = path
@@ -175,36 +174,35 @@ Monster = extends Entity {
 				// self.pathTime = self.time
 				
 				if(true){
-					var monster = level.layers[LAYER.MONSTERS].firstChild
-					for(; monster; monster = monster.nextSibling){
+					for(var i, monster in level.layers[LAYER.MONSTERS]){
 						if(monster !== self && !monster.path // && !monster.aimInverse && !monster.stopped
 							&& monster.desc.physics.fly == self.desc.physics.fly
 							&& (!level.useMonstersBattle || monster.desc.battleSide == self.desc.battleSide))
 						{
 							var dist = #(self.pos - monster.pos)
-							if(dist < 100 && level.traceActors(self, monster, self.desc.physics.fly)){
+							if(dist < 100 && level.traceEntities(self, monster, self.desc.physics.fly)){
 								monster.path = self.path
 								monster.pathFailed = 0
 								monster.pathIndex = self.pathIndex
 								monster.pathNextTime = level.time + math.random(0.1, 0.2)
 								monster.target = self.target
-								print("[path cloned on new path] "..monster.desc.image.id)
+								// print("[path cloned on new path] "..monster.desc.image.id)
 							}
 						}
 					}
 				}
 				
-				if(false && cm.use_path_debug){
+				if(level.usePathDebug){
 					level.layers[LAYER.PATH].removeChildren()
 					for(var i = 0; i < self.path.length; i++){
 						var node = self.path[i]
-						var pos = level.tiledMapToActorPos(node)
-						var checkpoint = cm.createActor(level, CAAT.ActorContainer, cm.clone({
-							center = pos,
-							radius = 5,
-							fillStyle = "#ff5555"
-						}))
-						level.layers[LAYER.PATH].addChild(checkpoint)
+						var pos = level.physCellPosToEntityPos(node.x, node.y)
+						Sprite().attrs {
+							resAnim = res.getResAnim("dot"),
+							parent = level.layers[LAYER.PATH],
+							pos = pos,
+							pivot = vec2(0.5, 0.5),
+						}
 					}
 				}
 			})
@@ -221,7 +219,7 @@ Monster = extends Entity {
 		var level = @level
 
 		var from = @pos
-		var p1 = level.actorPosToTileMapPos(from)
+		var p1 = level.entityPosToPhysCellPos(from)
 		
 		var newIndex, node			
 		for(var i = @path.length-1; i >= @pathIndex; i--){
@@ -239,20 +237,20 @@ Monster = extends Entity {
 			}
 			@pathIndex = newIndex
 			node = @path[ @pathIndex ]
-			print("[path] new node "..@pathIndex..", pos "..node.x.." "..node.y)
+			// print("[path] new node "..@pathIndex..", pos "..node.x.." "..node.y)
 		}else{
 			node = @path[ @pathIndex ]
 		}
 		
-		var to = level.tiledMapToActorPos(node)
-		print("[path] node "..@pathIndex..", to pos "..to.x.." "..to.y..", from "..from.x.." "..from.y)
+		var to = level.physCellPosToEntityPos(node.x, node.y)
+		// print("[path] node "..@pathIndex..", to pos "..to.x.." "..to.y..", from "..from.x.." "..from.y)
 		
-		@pathMoveStep = (@pathMoveStep + 1) % 2 // 4
+		@pathMoveStep = (@pathMoveStep + 1) % 4
 		if(@pathMoveStep == 0){
 			var maxSpeed = @desc.physics.maxSpeed
+			maxSpeed = maxSpeed * playerData.effects.scale.monsterSpeed
 			var curSpeed = #@linearVelocity
 			maxSpeed = math.min(maxSpeed, math.max(maxSpeed * 0.1, curSpeed * 1.1))
-			maxSpeed = maxSpeed * playerData.effects.scale.monsterSpeed
 			var speed = vec2(to.x - from.x, to.y - from.y).normalizeTo(maxSpeed)
 			@linearVelocity = speed
 			// cm.log("[path move] set speed: "+cm.round(speed.x, 1)+" "+cm.round(speed.y, 1))
@@ -260,7 +258,7 @@ Monster = extends Entity {
 			var forcePower = @desc.physics.forcePower
 			@aimForce = vec2(to.x - from.x, to.y - from.y).normalizeTo(forcePower * 0.9)
 			@applyForce(@aimForce, {speedScale = playerData.effects.scale.monsterSpeed})
-			print("[path move] apply force: "..math.round(force.x, 1).." "..math.round(force.y, 1))
+			// print("[path move] apply force: "..math.round(@aimForce.x, 1).." "..math.round(@aimForce.y, 1))
 		}
 		return true
 	},
@@ -295,7 +293,7 @@ Monster = extends Entity {
 						// cm.log("[monster move] dist "+cm.round(moveDist)+", true => inverse")
 						isContinualPhase = false
 						aim = @isEntVisible 
-								// && @level.traceActors(this, @level.player, @desc.physics.fly) 
+								// && @level.traceEntities(this, @level.player, @desc.physics.fly) 
 								? "inverse" : true
 						break
 					}
@@ -314,14 +312,14 @@ Monster = extends Entity {
 		}
 		var target = @target // ? @target : @level.player
 		if(@level.useMonstersBattle){
-			if(cm.isActorDead(target)){
+			if(@level.isEntityDead(target)){
 				aim = false
 			}
 		}else{
 			if(!target){
 				target = @level.player
 			}
-			/* if(!target || cm.isActorDead(target)){
+			/* if(!target || @level.isEntityDead(target)){
 				aim = false
 			} */
 		}
@@ -405,9 +403,9 @@ Monster = extends Entity {
 	nextMoveTime = 0,
 	update = function(ev){
 		if(@pathFailed >= 10){
-			print("[kill] "..@desc.image.id.." is in stick")
+			print("[kill #${@__id} "..@desc.image.id.." is in stick")
 			@deleteOnFailed = true
-			cm.deleteActor(this)
+			@level.deleteEntity(this)
 			return
 		}
 
@@ -517,13 +515,13 @@ Monster = extends Entity {
 					if(true){
 						actor.moveMonster("inverse")
 						actor.applyForce(actor.aimForce*3, {noClipForce = true})
-						print("[push monster] "..actor.desc.image.id)
+						// print("[push monster] "..actor.desc.image.id)
 					}						
 					return true
 					// cm.applyActorForce(actor, {x:actor.aimForce.x*2, y:actor.aimForce.y*2});
 				}else if(selfPathUsed || otherPathUsed){
 					/* var actor = otherPathUsed ? this : other;
-					if(level.traceActors(actor, level.player, actor.desc.physics.fly)){
+					if(level.traceEntities(actor, level.player, actor.desc.physics.fly)){
 						actor.moveMonster("inverse");
 						cm.applyActorForce(actor, {x:actor.aimForce.x*2, y:actor.aimForce.y*2});
 						cm.log("[push monster2] "+actor.desc.image.id);
@@ -535,7 +533,7 @@ Monster = extends Entity {
 				}
 			}
 		}else if((otherCategoryBits & (PHYS_CAT_BIT_STATIC | PHYS_CAT_BIT_WATER)) != 0){
-			if(@time > (@endContinualTime + @startContinualTime)/2 && /*@isMonsterVisible &&*/ @aimInverse){
+			if(@level.time > (@endContinualTime + @startContinualTime)/2 && /*@isMonsterVisible &&*/ @aimInverse){
 				// @endContinualTime = 0;
 				// @path = false;
 				// cm.log("[break inverse] "+@desc.image.id+", wall is touched");
@@ -550,7 +548,7 @@ Monster = extends Entity {
 
 		var bulletsLayer = level.layers[LAYER.MONSTER_BULLETS]
 		if(#bulletsLayer >= waveParams.monsterFireMaxBullets){
-			print("[monster fire] skipped, max bullets reached "..bulletsLayer.childrenList.length)
+			print("[monster fire] skipped, max bullets reached "..#bulletsLayer)
 			return
 		}
 		var fireIntervalSec = level.time - level.monsterFireTime

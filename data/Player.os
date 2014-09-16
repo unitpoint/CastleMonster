@@ -150,6 +150,7 @@ Player = extends Entity {
 	},
 	
 	onPhysicsContact = function(){
+	
 	},
 	
 	playFootstepSound = function(){

@@ -42,10 +42,13 @@ GameLevel = extends BaseGameLevel {
 		},
 		wavePhaseMonstersSpawned = 0,
 		time = 0,
-
+		findPathTime = 0,
+		monsterFireTime = 0,
 		paused = false,
-		
 		excludedSpawnAreas = [],
+		monsterSide = 0,
+		useMonstersBattle = false,
+		usePathDebug: true,
 	},
 	
 	__construct = function(p_level, p_invasion, p_day){
@@ -69,7 +72,7 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
-		// @debugDraw = DEBUG // @view must be already created
+		@debugDraw = true // DEBUG // @view must be already created
 		
 		@layers = []
 		for(var i = 0; i < LAYER.COUNT; i++){
@@ -468,11 +471,23 @@ GameLevel = extends BaseGameLevel {
 	},
 	
 	deleteEntity = function(ent){
-		ent.isEntDead && throw "deleteEntity ${ent.classname}: ${ent.desc.image.id} - already dead"
-		ent.classname != "Bullet" && print("deleteEntity ${ent.classname}: ${ent.desc.image.id}")
+		if(ent.isEntDead){ // throw "deleteEntity ${ent.classname}: ${ent.desc.image.id} - already dead"
+			print "deleteEntity ${ent.classname}#${ent.__id}: ${ent.desc.image.id} - already dead"
+			printBackTrace(1)
+			print "was killed at time: ${ent.killedAtTime}, cur time: ${@time}"
+			printBackTrace(ent.debugBackTrace)
+			return
+		}
+		ent.classname != "Bullet" && print("deleteEntity ${ent.classname}#${ent.__id}: ${ent.desc.image.id}")
 		@destroyEntityPhysics(ent)
 		ent.detach()
 		ent.isEntDead = true
+		ent.debugBackTrace = debugBackTrace(1)
+		ent.killedAtTime = @time
+		/* print("monsters _externalChildren: ")
+		for(var m, i in @layers[LAYER.MONSTERS]._externalChildren){
+			print "  [${m.classname}#${m.__id}] = ${i}"
+		} */
 	},
 	
 	dieEntity = function(ent){
@@ -480,8 +495,6 @@ GameLevel = extends BaseGameLevel {
 		@deleteEntity(ent)
 	},
 	
-	monsterSide = 0,
-	useMonstersBattle = false,
 	spawnMonster: function(params, spawnArea){
 		spawnArea || spawnArea = @findBestSpawnArea()
 		@useMonstersBattle && @monsterSide = (@monsterSide + 1) % 2
@@ -521,7 +534,7 @@ GameLevel = extends BaseGameLevel {
 			var monster
 			var spawnRandMonster = @wave.phaseParams.monster[0] !== null
 			count = math.min(5, count)
-			/* debug */ count *= 10
+			/* debug */ count *= 10 // count = 1
 			for(var i = 0; i < count; i++){
 				if(i == 0 || spawnRandMonster){
 					if(spawnRandMonster){
@@ -649,6 +662,7 @@ GameLevel = extends BaseGameLevel {
 					}
 				}
 			}
+			break
 		}
 		@createPhysicsWorld(@view.size)
 	},
@@ -701,11 +715,28 @@ GameLevel = extends BaseGameLevel {
 	
 	update = function(ev){
 		@time = ev.time
+		@updatePath(ev)
+		if(!@findPathInProgress && @time - @findPathTime >= 0.1){
+			var bestTime, bestMonster = 99999999999
+			for(var i, monster in @layers[LAYER.MONSTERS].reverseIter()){
+				if(bestTime > monster.pathNextTime && @time >= monster.pathNextTime){
+					bestTime = monster.pathNextTime
+					bestMonster = monster
+				}
+			}
+			if(bestMonster){
+				// print "update path of monster: ${bestMonster.desc.image.id} for ${bestMonster.classname}#${bestMonster.__id}"
+				bestMonster.updatePath()
+			}else{
+				// print "monster not found to update path, count: ${#@layers[LAYER.MONSTERS]}"
+			}
+			@findPathTime = @time
+		}
+		
 		@player.update(ev)
 		for(var _, layer in @layers){
-			// for(var child = layer.firstChild; child; child = child.nextSibling){
 			for(var _, child in layer){
-				child.update(ev)
+				"update" in child && child.update(ev)
 			}
 		}
 		@updatePhysics(ev.dt)
