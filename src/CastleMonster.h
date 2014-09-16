@@ -17,6 +17,7 @@ enum
 	PHYS_CAT_BIT_ENVIRONMENT	= 1<<7,
 	PHYS_CAT_BIT_MONSTER_FIRE	= 1<<8,
 	PHYS_CAT_BIT_BLOOD			= 1<<9,
+	PHYS_CAT_BIT_PLAYER_SENSOR	= 1<<10,
 			
 	PHYS_CAT_BIT_MONSTER_SPAWN	= 1<<15,
 	PHYS_CAT_BIT_PLAYER_SPAWN	= 1<<14,
@@ -236,7 +237,7 @@ struct PathFindThread
 };
 
 
-class BaseGameLevel: public oxygine::Actor, protected b2DestructionListener
+class BaseGameLevel: public oxygine::Actor, protected b2DestructionListener, protected b2ContactListener
 {
 public:
 	OS_DECLARE_CLASSINFO(BaseGameLevel);
@@ -281,6 +282,7 @@ protected:
 	float accumTimeSec;
 	b2World * physWorld;
 	PhysCell * physCells;
+	int physCellsMipmap;
 	int physLayerWidth;
 	int physLayerHeight;
 	int physCellWidth;
@@ -289,13 +291,14 @@ protected:
 	PathFindThread pathFindThread;
 
 	std::vector<spPhysBlock> physBlocks;
-	// std::vector<spBaseEntity> entities;
 	std::vector<b2Body*> waitBodiesToDestroy;
 
 	spPhysContact physContactShare;
 
 	int platfromEventId;
 	void onPlatformEvent(Event*);
+
+	void createPhysCellsMipmap();
 
 	void destroyWaitBodies();
 	void destroyAllBodies();
@@ -309,6 +312,12 @@ protected:
 	bool isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly);
 	int physCellPosToId(int x, int y);
 	float dist(int x, int y);
+
+	/// Called when two fixtures begin to touch.
+	void BeginContact(b2Contact* contact);
+
+	/// Called when two fixtures cease to touch.
+	void EndContact(b2Contact* contact);
 
 	/// Called when any joint is about to be destroyed due
 	/// to the destruction of one of its attached bodies.

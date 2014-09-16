@@ -245,7 +245,7 @@ Monster = extends Entity {
 		var to = level.physCellPosToEntityPos(node.x, node.y)
 		// print("[path] node "..@pathIndex..", to pos "..to.x.." "..to.y..", from "..from.x.." "..from.y)
 		
-		@pathMoveStep = (@pathMoveStep + 1) % 4
+		@pathMoveStep = (@pathMoveStep + 1) % 10
 		if(@pathMoveStep == 0){
 			var maxSpeed = @desc.physics.maxSpeed
 			maxSpeed = maxSpeed * playerData.effects.scale.monsterSpeed
@@ -462,14 +462,13 @@ Monster = extends Entity {
 				print("[aim on damage] "..@desc.image.id..", "..@desc.physics.aimOnDamage)
 			}
 		}else if((otherCategoryBits & PHYS_CAT_BIT_PLAYER) != 0){
-			if(!contact.getIsSensor(1-i)) //@desc.physics.inverseDurationSec !== undefined)
-			{
+			if(!contact.getIsSensor(1-i)){ //@desc.physics.inverseDurationSec !== undefined)
 				var other = contact.getEntity(1-i)
 				other.playPainSound()
 				
 				@playIdleSound()
 				@moveMonster("inverse")
-				// print("[touch player] "..@desc.image.id)
+				// print("[touch player] time: ${math.round(@level.time, 3)}, #${@__id} "..@desc.image.id..", dist: ${math.round(#(@pos - other.pos), 2)}")
 			}
 		}else if((otherCategoryBits & PHYS_CAT_BIT_MONSTER) != 0){
 			var other = contact.getEntity(1-i)

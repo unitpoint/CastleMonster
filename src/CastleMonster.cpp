@@ -20,6 +20,7 @@ static void registerBaseGameGlobals(OS * os)
 		DEF_CONST(PHYS_CAT_BIT_PLAYER),
 		DEF_CONST(PHYS_CAT_BIT_MONSTER),
 		DEF_CONST(PHYS_CAT_BIT_PLAYER_FIRE),
+		DEF_CONST(PHYS_CAT_BIT_PLAYER_SENSOR),
 		DEF_CONST(PHYS_CAT_BIT_POWERUP),
 		DEF_CONST(PHYS_CAT_BIT_STATIC),
 		DEF_CONST(PHYS_CAT_BIT_WATER),
@@ -388,6 +389,7 @@ BaseGameLevel::BaseGameLevel()
 	accumTimeSec = 0;
 	physWorld = NULL;
 	physCells = NULL;
+	physCellsMipmap = 0;
 	physLayerWidth = 0;
 	physLayerHeight = 0;
 	physCellWidth = 0;
@@ -403,7 +405,7 @@ BaseGameLevel::~BaseGameLevel()
 	debugDraw = NULL;
 	destroyAllBodies();
 	Input::instance.removeEventListener(platfromEventId);
-	delete physCells;
+	delete [] physCells;
 	delete physWorld;
 }
 
@@ -455,16 +457,85 @@ void BaseGameLevel::setPhysCell(int x, int y, EPhysCellType type)
 PhysCell * BaseGameLevel::getPhysCell(int x, int y)
 {
 	OX_ASSERT(physCells);
-	OX_ASSERT(x >= 0 && x < physLayerWidth);
-	OX_ASSERT(y >= 0 && y < physLayerHeight);
+	// OX_ASSERT(x >= 0 && x < physLayerWidth);
+	// OX_ASSERT(y >= 0 && y < physLayerHeight);
 	if(physCells && x >= 0 && x < physLayerWidth && y >= 0 && y < physLayerHeight){
 		return physCells + (y*physLayerWidth + x);
 	}
 	return NULL;
 }
 
+void BaseGameLevel::createPhysCellsMipmap()
+{
+	int newPhysLayerWidth = physLayerWidth / 2;
+	int newPhysLayerHeight = physLayerHeight / 2;
+	PhysCell * newPhysCells = new PhysCell[newPhysLayerWidth * newPhysLayerHeight];
+	for(int x = 0; x < newPhysLayerWidth; x++){
+		for(int y = 0; y < newPhysLayerHeight; y++){
+			PhysCell * cur = newPhysCells + (y*newPhysLayerWidth + x);
+			bool waterFound = false, playerSpawnFound = false, monsterSpawnFound = false;
+			for(int dx = 0; dx < 2 && cur->type == PHYS_EMPTY; dx++){
+				for(int dy = 0; dy < 2 && cur->type == PHYS_EMPTY; dy++){
+					int px = x*2 + dx;
+					int py = y*2 + dy;
+					PhysCell * cell = getPhysCell(px, py);
+					if(cell){
+						switch(cell->type){
+						case PHYS_WATER:
+							waterFound = true;
+							break;
+
+						case PHYS_PLAYER_SPAWN:
+							playerSpawnFound = true;
+							break;
+
+						case PHYS_MONSTER_SPAWN:
+							monsterSpawnFound = true;
+							break;
+
+						case PHYS_SOLID:
+							cur->type = PHYS_SOLID;
+							break;
+						}
+					}
+				}
+			}
+			if(cur->type == PHYS_EMPTY){
+				if(waterFound){
+					cur->type = PHYS_WATER;
+				}else if(playerSpawnFound){
+					cur->type = PHYS_PLAYER_SPAWN;
+				}else if(monsterSpawnFound){
+					cur->type = PHYS_MONSTER_SPAWN;
+				}
+			}
+		}
+	}
+	delete [] physCells;
+	physCells = newPhysCells;
+	physCellsMipmap++;
+	physLayerWidth /= 2;
+	physLayerHeight /= 2;
+	physCellWidth *= 2;
+	physCellHeight *= 2;
+}
+
 bool BaseGameLevel::isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly)
 {
+	if(physCellsMipmap > 0){
+		PhysCell * cell = getPhysCell(x, y);
+		if(cell){
+			switch(cell->type){
+			case PHYS_WATER:
+				return !fly;
+								
+			case PHYS_SOLID:
+				return true;
+			}
+		}
+		return false;
+	}
+
 	if( (x - 2-1 <= x2 && x2 <= x + 2+1 && y - 2-1 <= y2 && y2 <= y + 2+1) 
 			|| (x - 2-1 <= x1 && x1 <= x + 2+1 && y - 2-1 <= y1 && y1 <= y + 2+1) )
 	{
@@ -601,7 +672,7 @@ void PathFindThread::threadFunc()
 			run = true;
 		}while(false);
 		if(!run){
-			sleep(10);
+			sleep(20);
 			continue;
 		}
 
@@ -700,7 +771,7 @@ void PathFindThread::threadFunc()
 				if(it != openNodes.end()) openNodes.erase(it);
 				continue;
 			}
-			if(curNode->parent){
+			/* if(curNode->parent){
 				int i = 0;
 				do{
 					curNode = curNode->parent;
@@ -708,7 +779,7 @@ void PathFindThread::threadFunc()
 				if(curNode){
 					continue;
 				}
-			}
+			} */
 			curNode = NULL;
 			bestWeight = FLT_MAX;
 			PathNodes::iterator it = openNodes.begin();
@@ -1383,12 +1454,13 @@ void BaseGameLevel::updatePhysics(float dt)
 	for(; body; body = body->GetNext()){
 		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)body->GetUserData());
 		if(ent){
-			OX_ASSERT(ent->body == body);
+			OX_ASSERT(ent->body == body && ent->game == this);
 			ent->setPosition(fromPhysVec(body->GetPosition()));
 			ent->setRotation(body->GetAngle());
 		}
 	}
 
+#if 0
 	ObjectScript::OS * os = ObjectScript::os;
 	b2Contact * c = physWorld->GetContactList();
 	for(; c; c = c->GetNext()){
@@ -1417,6 +1489,39 @@ void BaseGameLevel::updatePhysics(float dt)
 		}
 	}
 	physContactShare->contact = NULL;
+#endif
+}
+
+void BaseGameLevel::BeginContact(b2Contact* c)
+{
+	ObjectScript::OS * os = ObjectScript::os;
+	BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
+	if(ent){
+		ObjectScript::pushCtypeValue(os, ent);
+		os->getProperty("onPhysicsContact");
+		OX_ASSERT(os->isFunction());
+		ObjectScript::pushCtypeValue(os, ent); // this
+		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
+		os->pushNumber(0);
+		os->call(2, 1);
+		if(os->popBool()){
+			return;
+		}
+	}
+	ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureB()->GetBody()->GetUserData());
+	if(ent){
+		ObjectScript::pushCtypeValue(os, ent);
+		os->getProperty("onPhysicsContact");
+		OX_ASSERT(os->isFunction());
+		ObjectScript::pushCtypeValue(os, ent); // this
+		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
+		os->pushNumber(1);
+		os->call(2);
+	}
+}
+
+void BaseGameLevel::EndContact(b2Contact* contact)
+{
 }
 
 void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
@@ -1430,11 +1535,14 @@ void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
 	physWorld = new b2World(gravity);
 	physWorld->SetAllowSleeping(true);
 	physWorld->SetDestructionListener(this);
+	physWorld->SetContactListener(this);
 
 	physCellWidth = (int)size.x / physLayerWidth;
 	physCellHeight = (int)size.x / physLayerHeight;
 
 	initPhysBlocks();
+	// createPhysCellsMipmap();
+	// createPhysCellsMipmap();
 }
 
 bool BaseGameLevel::getDebugDraw() const

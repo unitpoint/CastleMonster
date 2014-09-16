@@ -26,24 +26,25 @@ Player = extends Entity {
 				| PHYS_CAT_BIT_MONSTER_SPAWN | PHYS_CAT_BIT_MONSTER_AREA 
 				| PHYS_CAT_BIT_PLAYER_SPAWN,
 			
-			minSpeed: 0,
-			maxSpeed: @originSpeed,
-			forcePower: 1000 * PLAYER_FORCE_SCALE * 3.0/3,
+			minSpeed = 0,
+			maxSpeed = @originSpeed,
+			forcePower = 1000 * PLAYER_FORCE_SCALE * 3.0/3,
 			
-			shapes: [ {						
-				radiusScale: 0.8
-				// widthScale: 0.6,
-				// heightScale: 0.9
+			shapes = [ {						
+				radiusScale = 0.8
+				// widthScale = 0.6,
+				// heightScale = 0.9
 			}, {
-				radiusScale: 2.5,
-				sensor: true,
-				density: 0,
-				ignoreBits: PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_POWERUP
+				radiusScale = 2.5,
+				sensor = true,
+				density = 0,
+				categoryBits = PHYS_CAT_BIT_PLAYER_SENSOR,
+				ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_POWERUP
 			} /*, {
-				radiusScale: 8,
-				sensor: true,
-				density: 0,
-				ignoreBits: PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_MONSTER
+				radiusScale = 8,
+				sensor = true,
+				density = 0,
+				ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_MONSTER
 			}*/ ]
 		}
 		level.initEntityPhysics(this)

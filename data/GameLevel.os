@@ -72,7 +72,7 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
-		@debugDraw = true // DEBUG // @view must be already created
+		@debugDraw = DEBUG // @view must be already created
 		
 		@layers = []
 		for(var i = 0; i < LAYER.COUNT; i++){

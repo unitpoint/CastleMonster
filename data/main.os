@@ -71,13 +71,6 @@ function extend(a, b, clone_result){
 	return a
 }
 
-TEST_LEVEL_INVASION = 3
-INVASION_COUNT = 30
-DAY_COUNT = 30
-
-FORCE_SCALE = 0.1
-PLAYER_FORCE_SCALE = FORCE_SCALE
-
 playerData = {
 	__get = function(name){
 		throw "property \"${name}\" not found in \"${@__name || @classname}\""
@@ -139,5 +132,12 @@ playerData = {
 	}
 }
 
-GameLevel(5, 1, 15).attachTo(stage)
+TEST_LEVEL_INVASION = 3
+INVASION_COUNT = 30
+DAY_COUNT = 30
+
+FORCE_SCALE = 0.2
+PLAYER_FORCE_SCALE = 0.1
+
+GameLevel(5, 1, 3).attachTo(stage)
 
