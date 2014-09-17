@@ -144,14 +144,14 @@ Monster = extends Entity {
 			}
 			@pathNextTime = level.time + math.random(0.1, 0.2)
 			
-			var p1 = level.entityPosToPhysCellPos(@pos)
-			var p2 = level.entityPosToPhysCellPos(@target.pos)
+			var x1, y1 = level.entityPosToTile(@pos)
+			var x2, y2 = level.entityPosToTile(@target.pos)
 			// print "p1: ${p1} ${@pos}, p2: ${p2} ${@target.pos}"
 			
 			if(@path && @pathValid <= 10){
 				@pathValid++
 				var node = @path[@path.length-1]
-				if(math.abs(node.x - p2.x) <= 1 && math.abs(node.y - p2.y) <= 1){
+				if(math.abs(node.x - x2) <= 1 && math.abs(node.y - y2) <= 1){
 					// print("[path] cur path is still valid for ${@classname}#${@__id}")
 					return
 				}
@@ -162,7 +162,7 @@ Monster = extends Entity {
 			
 			var self = this
 			// print "start finding path for ${@classname}#${@__id}"
-			level.findPath(p1.x, p1.y, p2.x, p2.y, @desc.physics.fly, true, function(path){
+			level.findPath(x1, y1, x2, y2, @desc.physics.fly, true, function(path){
 				// print "path found for ${self.classname}#${self.__id}: ${path}"
 				if(!path || level.isEntityDead(self)){
 					return
@@ -196,7 +196,7 @@ Monster = extends Entity {
 					level.layers[LAYER.PATH].removeChildren()
 					for(var i = 0; i < self.path.length; i++){
 						var node = self.path[i]
-						var pos = level.physCellPosToEntityPos(node.x, node.y)
+						var pos = level.tileToEntityPos(node.x, node.y)
 						Sprite().attrs {
 							resAnim = res.getResAnim("dot"),
 							parent = level.layers[LAYER.PATH],
@@ -219,12 +219,12 @@ Monster = extends Entity {
 		var level = @level
 
 		var from = @pos
-		var p1 = level.entityPosToPhysCellPos(from)
+		var x, y = level.entityPosToTile(from)
 		
 		var newIndex, node			
 		for(var i = @path.length-1; i >= @pathIndex; i--){
 			node = @path[i]
-			if(math.abs(node.x - p1.x) <= 1 && math.abs(node.y - p1.y) <= 1){
+			if(math.abs(node.x - x) <= 1 && math.abs(node.y - y) <= 1){
 				newIndex = i+1
 				break
 			}
@@ -242,10 +242,10 @@ Monster = extends Entity {
 			node = @path[ @pathIndex ]
 		}
 		
-		var to = level.physCellPosToEntityPos(node.x, node.y)
+		var to = level.tileToEntityPos(node.x, node.y)
 		// print("[path] node "..@pathIndex..", to pos "..to.x.." "..to.y..", from "..from.x.." "..from.y)
 		
-		@pathMoveStep = (@pathMoveStep + 1) % 10
+		@pathMoveStep = 1 // (@pathMoveStep + 1) % 10
 		if(@pathMoveStep == 0){
 			var maxSpeed = @desc.physics.maxSpeed
 			maxSpeed = maxSpeed * playerData.effects.scale.monsterSpeed

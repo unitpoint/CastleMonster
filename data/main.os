@@ -42,7 +42,7 @@ function randTime(time, scale){
 	return time * (1 + randSign()*0.1) * (scale || 1)
 }
 
-function PhysBlock.valueOf(){
+function TileArea.valueOf(){
 	return {type = @type, pos = @pos, size = @size}.valueOf()
 }
 
@@ -136,8 +136,8 @@ TEST_LEVEL_INVASION = 3
 INVASION_COUNT = 30
 DAY_COUNT = 30
 
-FORCE_SCALE = 0.2
-PLAYER_FORCE_SCALE = 0.1
+FORCE_SCALE = 20 // TO_PHYS_SCALE * 200
+PLAYER_FORCE_SCALE = 10 // TO_PHYS_SCALE * 100
 
 GameLevel(5, 1, 3).attachTo(stage)
 

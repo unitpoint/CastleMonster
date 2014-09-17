@@ -355,18 +355,18 @@ GameLevel = extends BaseGameLevel {
 		// print('end load items', loadedTimeSec - startTimeSec, endTimeSec - loadedTimeSec, endTimeSec - startTimeSec) // , playerData.itemsByTypeId)
 	},
 	
-	_physBlocks = null,
-	getPhysTypeBlocks = function(type){
-		return @_physBlocks[type] || @{
-			@_physBlocks && throw "there is no type: ${type}"
-			@_physBlocks = {}
-			var count = @physBlockCount
+	_tileAreas = null,
+	getTileAreasByType = function(type){
+		return @_tileAreas[type] || @{
+			@_tileAreas && throw "there is no type: ${type}"
+			@_tileAreas = {}
+			var count = @tileAreaCount
 			for(var i = 0; i < count; i++){
-				var p = @getPhysBlock(i)
-				;(@_physBlocks[p.type] || @_physBlocks[p.type] = [])[] = p
+				var p = @getTileArea(i)
+				;(@_tileAreas[p.type] || @_tileAreas[p.type] = [])[] = p
 			}
-			// print "loadPhysBlocks: ${@_physBlocks}"
-			return @_physBlocks[type] || throw "there is no type: ${type}"
+			// print "loadTileAreas: ${@_tileAreas}"
+			return @_tileAreas[type] || throw "there is no type: ${type}"
 		}
 	},
 	
@@ -375,7 +375,7 @@ GameLevel = extends BaseGameLevel {
 		// cm.log("[findBestSpawnArea] pos "+pos.x+" "+pos.y);
 		var bestSpawnArea = null
 		var bestDist, bestNum = 999999999, -1
-		var list = @getPhysTypeBlocks(PHYS_MONSTER_SPAWN)
+		var list = @getTileAreasByType(PHYS_MONSTER_SPAWN)
 		var count = #list
 		var maxExcludedCount = math.ceil(math.min(count-1, math.max(2, @wave.day/5.0 + @params.invasion-1)))
 		while(#@excludedSpawnAreas > maxExcludedCount){
@@ -534,7 +534,7 @@ GameLevel = extends BaseGameLevel {
 			var monster
 			var spawnRandMonster = @wave.phaseParams.monster[0] !== null
 			count = math.min(5, count)
-			/* debug */ count *= 10 // count = 1
+			/* debug */ count = 1 // count *= 10
 			for(var i = 0; i < count; i++){
 				if(i == 0 || spawnRandMonster){
 					if(spawnRandMonster){
@@ -646,7 +646,7 @@ GameLevel = extends BaseGameLevel {
 			tiledMap.physics.layer = layer
 			var width = layer.width
 			var height = layer.height
-			@setPhysSize(width, height)
+			@setTileWorldSize(width, height)
 			for(var x = 0; x < width; x++){
 				for(var y = 0; y < height; y++){
 					var gid = layer.map[x][y]
@@ -658,7 +658,7 @@ GameLevel = extends BaseGameLevel {
 						case 2: // player spawn
 						case 3: // monster spawn
 						} */ 
-						@setPhysCell(x, y, gid)
+						@setTile(x, y, gid)
 					}
 				}
 			}

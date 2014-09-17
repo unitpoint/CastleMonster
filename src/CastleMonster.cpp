@@ -17,6 +17,7 @@ static void registerBaseGameGlobals(OS * os)
 	};
 
 	OS::NumberDef nums[] = {
+		DEF_CONST(TO_PHYS_SCALE),
 		DEF_CONST(PHYS_CAT_BIT_PLAYER),
 		DEF_CONST(PHYS_CAT_BIT_MONSTER),
 		DEF_CONST(PHYS_CAT_BIT_PLAYER_FIRE),
@@ -92,19 +93,19 @@ static void registerBaseGameLevel(OS * os)
 			return 0;
 		}
 		
-		static int entityPosToPhysCellPos(OS * os, int params, int, int need_ret_values, void*)
+		static int entityPosToTile(OS * os, int params, int, int need_ret_values, void*)
 		{
 			OS_GET_SELF(BaseGameLevel*);
 			int x, y;
 			Vector2 pos = ObjectScript::CtypeValue<Vector2>::getArg(os, -params+0);
-			self->entityPosToPhysCellPos(pos, x, y);
-			if(need_ret_values >= 2){
-				os->pushNumber(x);
-				os->pushNumber(y);
-				return 2;
+			self->entityPosToTile(pos, x, y);
+			if(need_ret_values < 2){
+				os->setException("two return values required");
+				return 0;
 			}
-			ObjectScript::pushCtypeValue(os, Vector2((float)x, (float)y));
-			return 1;
+			os->pushNumber(x);
+			os->pushNumber(y);
+			return 2;
 		}
 	};
 
@@ -112,18 +113,18 @@ static void registerBaseGameLevel(OS * os)
 		def("__newinstance", &Lib::__newinstance),
 		def("createPhysicsWorld", &BaseGameLevel::createPhysicsWorld),
 		def("updatePhysics", &BaseGameLevel::updatePhysics),
-		def("setPhysSize", &BaseGameLevel::setPhysSize),
-		def("setPhysCell", &BaseGameLevel::setPhysCell),
+		def("setTileWorldSize", &BaseGameLevel::setTileWorldSize),
+		def("setTile", &BaseGameLevel::setTile),
 		def("initEntityPhysics", &BaseGameLevel::initEntityPhysics),
 		def("destroyEntityPhysics", &BaseGameLevel::destroyEntityPhysics),
 		DEF_PROP(debugDraw, BaseGameLevel, DebugDraw),
-		DEF_GET(physBlockCount, BaseGameLevel, PhysBlockCount),
-		def("getPhysBlock", &BaseGameLevel::getPhysBlock),
+		DEF_GET(tileAreaCount, BaseGameLevel, TileAreaCount),
+		def("getTileArea", &BaseGameLevel::getTileArea),
 		DEF_GET(findPathInProgress, BaseGameLevel, FindPathInProgress),
 		def("updatePath", &BaseGameLevel::updatePath),
 		{"findPath", &Lib::findPath},
-		{"entityPosToPhysCellPos", &Lib::entityPosToPhysCellPos},
-		def("physCellPosToEntityPos", &BaseGameLevel::physCellPosToEntityPos),
+		{"entityPosToTile", &Lib::entityPosToTile},
+		def("tileToEntityPos", &BaseGameLevel::tileToEntityPos),
 		def("traceEntities", &BaseGameLevel::traceEntities),
 		{}
 	};
@@ -136,28 +137,28 @@ bool __registerBaseGameLevel = addRegFunc(registerBaseGameLevel);
 
 // =====================================================================
 
-static void registerPhysBlock(OS * os)
+static void registerTileArea(OS * os)
 {
 	struct Lib {
-		static PhysBlock * __newinstance()
+		static TileArea * __newinstance()
 		{
-			return new PhysBlock();
+			return new TileArea();
 		}
 	};
 
 	OS::FuncDef funcs[] = {
 		// def("__newinstance", &Lib::__newinstance),
-		DEF_GET(pos, PhysBlock, Pos),
-		DEF_GET(size, PhysBlock, Size),
-		DEF_GET(type, PhysBlock, Type),
+		DEF_GET(pos, TileArea, Pos),
+		DEF_GET(size, TileArea, Size),
+		DEF_GET(type, TileArea, Type),
 		{}
 	};
 	OS::NumberDef nums[] = {
 		{}
 	};
-	registerOXClass<PhysBlock, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
+	registerOXClass<TileArea, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
-bool __registerPhysBlock = addRegFunc(registerPhysBlock);
+bool __registerTileArea = addRegFunc(registerTileArea);
 
 // =====================================================================
 
@@ -388,12 +389,12 @@ BaseGameLevel::BaseGameLevel()
 	pathFindThread.level = this;
 	accumTimeSec = 0;
 	physWorld = NULL;
-	physCells = NULL;
-	physCellsMipmap = 0;
-	physLayerWidth = 0;
-	physLayerHeight = 0;
-	physCellWidth = 0;
-	physCellHeight = 0;
+	tiles = NULL;
+	tilesMipmap = 0;
+	tileWorldWidth = 0;
+	tileWorldHeight = 0;
+	tileWidth = 0;
+	tileHeight = 0;
 	// findPathInProgress = false;
 	platfromEventId = Input::instance.addEventListener(Input::event_platform, CLOSURE(this, &BaseGameLevel::onPlatformEvent));
 	physContactShare = new PhysContact;
@@ -405,7 +406,7 @@ BaseGameLevel::~BaseGameLevel()
 	debugDraw = NULL;
 	destroyAllBodies();
 	Input::instance.removeEventListener(platfromEventId);
-	delete [] physCells;
+	delete [] tiles;
 	delete physWorld;
 }
 
@@ -441,46 +442,46 @@ void BaseGameLevel::onPlatformEvent(Event * p_ev)
 	dispatchEvent(&keyEvent);
 }
 
-void BaseGameLevel::setPhysSize(int width, int height)
+void BaseGameLevel::setTileWorldSize(int width, int height)
 {
-	OX_ASSERT(!physCells);
-	physLayerWidth = width;
-	physLayerHeight = height;
-	physCells = new PhysCell[width * height];
+	OX_ASSERT(!tiles);
+	tileWorldWidth = width;
+	tileWorldHeight = height;
+	tiles = new Tile[width * height];
 }
 
-void BaseGameLevel::setPhysCell(int x, int y, EPhysCellType type)
+void BaseGameLevel::setTile(int x, int y, EPhysType type)
 {
-	getPhysCell(x, y)->type = type;
+	getTile(x, y)->type = type;
 }
 
-PhysCell * BaseGameLevel::getPhysCell(int x, int y)
+Tile * BaseGameLevel::getTile(int x, int y)
 {
-	OX_ASSERT(physCells);
-	// OX_ASSERT(x >= 0 && x < physLayerWidth);
-	// OX_ASSERT(y >= 0 && y < physLayerHeight);
-	if(physCells && x >= 0 && x < physLayerWidth && y >= 0 && y < physLayerHeight){
-		return physCells + (y*physLayerWidth + x);
+	OX_ASSERT(tiles);
+	// OX_ASSERT(x >= 0 && x < tileWorldWidth);
+	// OX_ASSERT(y >= 0 && y < tileWorldHeight);
+	if(tiles && x >= 0 && x < tileWorldWidth && y >= 0 && y < tileWorldHeight){
+		return tiles + (y*tileWorldWidth + x);
 	}
 	return NULL;
 }
 
-void BaseGameLevel::createPhysCellsMipmap()
+void BaseGameLevel::createTilesMipmap()
 {
-	int newPhysLayerWidth = physLayerWidth / 2;
-	int newPhysLayerHeight = physLayerHeight / 2;
-	PhysCell * newPhysCells = new PhysCell[newPhysLayerWidth * newPhysLayerHeight];
-	for(int x = 0; x < newPhysLayerWidth; x++){
-		for(int y = 0; y < newPhysLayerHeight; y++){
-			PhysCell * cur = newPhysCells + (y*newPhysLayerWidth + x);
+	int newTileWorldWidth = tileWorldWidth / 2;
+	int newTileWorldHeight = tileWorldHeight / 2;
+	Tile * newTiles = new Tile[newTileWorldWidth * newTileWorldHeight];
+	for(int x = 0; x < newTileWorldWidth; x++){
+		for(int y = 0; y < newTileWorldHeight; y++){
+			Tile * cur = newTiles + (y*newTileWorldWidth + x);
 			bool waterFound = false, playerSpawnFound = false, monsterSpawnFound = false;
 			for(int dx = 0; dx < 2 && cur->type == PHYS_EMPTY; dx++){
 				for(int dy = 0; dy < 2 && cur->type == PHYS_EMPTY; dy++){
 					int px = x*2 + dx;
 					int py = y*2 + dy;
-					PhysCell * cell = getPhysCell(px, py);
-					if(cell){
-						switch(cell->type){
+					Tile * tile = getTile(px, py);
+					if(tile){
+						switch(tile->type){
 						case PHYS_WATER:
 							waterFound = true;
 							break;
@@ -511,21 +512,21 @@ void BaseGameLevel::createPhysCellsMipmap()
 			}
 		}
 	}
-	delete [] physCells;
-	physCells = newPhysCells;
-	physCellsMipmap++;
-	physLayerWidth /= 2;
-	physLayerHeight /= 2;
-	physCellWidth *= 2;
-	physCellHeight *= 2;
+	delete [] tiles;
+	tiles = newTiles;
+	tilesMipmap++;
+	tileWorldWidth /= 2;
+	tileWorldHeight /= 2;
+	tileWidth *= 2;
+	tileHeight *= 2;
 }
 
-bool BaseGameLevel::isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly)
+bool BaseGameLevel::isTileBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly)
 {
-	if(physCellsMipmap > 0){
-		PhysCell * cell = getPhysCell(x, y);
-		if(cell){
-			switch(cell->type){
+	if(tilesMipmap > 0){
+		Tile * tile = getTile(x, y);
+		if(tile){
+			switch(tile->type){
 			case PHYS_WATER:
 				return !fly;
 								
@@ -539,9 +540,9 @@ bool BaseGameLevel::isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int 
 	if( (x - 2-1 <= x2 && x2 <= x + 2+1 && y - 2-1 <= y2 && y2 <= y + 2+1) 
 			|| (x - 2-1 <= x1 && x1 <= x + 2+1 && y - 2-1 <= y1 && y1 <= y + 2+1) )
 	{
-		PhysCell * cell = getPhysCell(x, y);
-		if(cell){
-			switch(cell->type){
+		Tile * tile = getTile(x, y);
+		if(tile){
+			switch(tile->type){
 			case PHYS_WATER:
 				return !fly;
 								
@@ -552,34 +553,34 @@ bool BaseGameLevel::isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int 
 		return false;
 	}
 
-	PhysCell * cell = getPhysCell(x, y);
-	if(cell->mipmapCalculated[fly]){
-		return cell->mipmapBlocked[fly];
+	Tile * tile = getTile(x, y);
+	if(tile->mipmapCalculated[fly]){
+		return tile->mipmapBlocked[fly];
 	}
-	cell->mipmapCalculated[fly] = true;
+	tile->mipmapCalculated[fly] = true;
 
 	int startX = x-2, endX = x+2;
 	int startY = y-2, endY = y+2;
 	for(int px = startX; px <= endX; px++){
 		for(int py = startY; py <= endY; py++){
-			PhysCell * curCell = getPhysCell(px, py);
+			Tile * curCell = getTile(px, py);
 			if(curCell){
 				switch(curCell->type){
 				case PHYS_WATER:
-					return cell->mipmapBlocked[fly] = !fly;
+					return tile->mipmapBlocked[fly] = !fly;
 									
 				case PHYS_SOLID:
-					return cell->mipmapBlocked[fly] = true;
+					return tile->mipmapBlocked[fly] = true;
 				}
 			}
 		}
 	}
-	return cell->mipmapBlocked[fly] = false;
+	return tile->mipmapBlocked[fly] = false;
 }
 
-int BaseGameLevel::physCellPosToId(int x, int y)
+int BaseGameLevel::getTileId(int x, int y)
 {
-	return y * physLayerHeight + x;
+	return y * tileWorldHeight + x;
 }
 
 static float dist(int x, int y)
@@ -672,7 +673,7 @@ void PathFindThread::threadFunc()
 			run = true;
 		}while(false);
 		if(!run){
-			sleep(20);
+			sleep(50);
 			continue;
 		}
 
@@ -680,13 +681,13 @@ void PathFindThread::threadFunc()
 		node->x = x1;
 		node->y = y1;
 		node->closed = true;
-		node->id = level->physCellPosToId(node->x, node->y);
+		node->id = level->getTileId(node->x, node->y);
 		node->weightH = dist(x2 - node->x, y2 - node->y);
 		node->weight = node->weightG + node->weightH;
 				
 		nodes[node->id] = node;
 				
-		int endNodeId = level->physCellPosToId(x2, y2);
+		int endNodeId = level->getTileId(x2, y2);
 		spPathNode curNode = node;
 
 		int maxSteps = 10000;
@@ -714,10 +715,10 @@ void PathFindThread::threadFunc()
 			int curY = curNode->y;
 						
 			int startX = max(0, curX-1);
-			int endX = min(level->physLayerWidth-1, curX+1);
+			int endX = min(level->tileWorldWidth-1, curX+1);
 						
 			int startY = max(0, curY-1);
-			int endY = min(level->physLayerHeight-1, curY+1);
+			int endY = min(level->tileWorldHeight-1, curY+1);
 						
 			for(int px = startX; px <= endX; px++){
 				int dx = curX - px;
@@ -726,9 +727,9 @@ void PathFindThread::threadFunc()
 					if(!(dx | dy)){
 						continue;
 					}
-					int id = level->physCellPosToId(px, py);
+					int id = level->getTileId(px, py);
 					if(nodes.find(id) == nodes.end()){
-						if(level->isPhysCellBlocked(px, py, x1, y1, x2, y2, fly)){
+						if(level->isTileBlocked(px, py, x1, y1, x2, y2, fly)){
 							continue;
 						}
 						spPathNode node = new PathNode();
@@ -844,10 +845,10 @@ void BaseGameLevel::updatePath(ObjectScript::UpdateEvent*)
 
 void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allowNotFinishedPath, int callbackOSValueId)
 {
-	// int x1 = (int)p1.x / physCellWidth, y1 = (int)p1.y / physCellHeight;
-	// int x2 = (int)p2.x / physCellWidth, y2 = (int)p2.y / physCellHeight;
-	OX_ASSERT(x1 >= 0 && x1 < physLayerWidth && y1 >= 0 && y1 < physLayerHeight);
-	OX_ASSERT(x2 >= 0 && x2 < physLayerWidth && y2 >= 0 && y2 < physLayerHeight);
+	// int x1 = (int)p1.x / tileWidth, y1 = (int)p1.y / tileHeight;
+	// int x2 = (int)p2.x / tileWidth, y2 = (int)p2.y / tileHeight;
+	OX_ASSERT(x1 >= 0 && x1 < tileWorldWidth && y1 >= 0 && y1 < tileWorldHeight);
+	OX_ASSERT(x2 >= 0 && x2 < tileWorldWidth && y2 >= 0 && y2 < tileWorldHeight);
 	if(!callbackOSValueId){
 		OX_ASSERT(false);
 		return;
@@ -885,7 +886,7 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 	node->x = x1;
 	node->y = y1;
 	node->closed = true;
-	node->id = physCellPosToId(node->x, node->y);
+	node->id = getTileId(node->x, node->y);
 	node->weightH = dist(x2 - node->x, y2 - node->y);
 	node->weight = node->weightG + node->weightH;
 				
@@ -895,7 +896,7 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 	
 	nodes[node->id] = node;
 				
-	int endNodeId = physCellPosToId(x2, y2);
+	int endNodeId = getTileId(x2, y2);
 	spPathNode curNode = node;
 
 	int maxSteps = 500;
@@ -944,10 +945,10 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 		int curY = curNode->y;
 						
 		int startX = max(0, curX-1);
-		int endX = min(physLayerWidth-1, curX+1);
+		int endX = min(tileWorldWidth-1, curX+1);
 						
 		int startY = max(0, curY-1);
-		int endY = min(physLayerHeight-1, curY+1);
+		int endY = min(tileWorldHeight-1, curY+1);
 						
 		for(int px = startX; px <= endX; px++){
 			int dx = curX - px;
@@ -956,9 +957,9 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 				if(!(dx | dy)){
 					continue;
 				}
-				int id = physCellPosToId(px, py);
+				int id = getTileId(px, py);
 				if(nodes.find(id) == nodes.end()){
-					if(isPhysCellBlocked(px, py, x1, y1, x2, y2, fly)){
+					if(isTileBlocked(px, py, x1, y1, x2, y2, fly)){
 						continue;
 					}
 					spPathNode node = new PathNode();
@@ -1042,17 +1043,17 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 }
 */
 
-void BaseGameLevel::entityPosToPhysCellPos(const Vector2& pos, int& x, int& y)
+void BaseGameLevel::entityPosToTile(const Vector2& pos, int& x, int& y)
 {
-	x = (int)pos.x / physCellWidth;
-	y = (int)pos.y / physCellHeight;
+	x = (int)pos.x / tileWidth;
+	y = (int)pos.y / tileHeight;
 }
 
-Vector2 BaseGameLevel::physCellPosToEntityPos(int x, int y)
+Vector2 BaseGameLevel::tileToEntityPos(int x, int y)
 {
 	return Vector2(
-		(float)(x * physCellWidth + physCellWidth/2),
-		(float)(y * physCellHeight + physCellHeight/2)
+		(float)(x * tileWidth + tileWidth/2),
+		(float)(y * tileHeight + tileHeight/2)
 		);
 }
 
@@ -1060,8 +1061,8 @@ bool BaseGameLevel::traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly
 {
 	Vector2 _p1 = ent1->getPosition();
 	Vector2 _p2 = ent2->getPosition();
-	float x1 = floorf(_p1.x / physCellWidth), y1 = floorf(_p1.y / physCellHeight);
-	float x2 = floorf(_p2.x / physCellWidth), y2 = floorf(_p2.y / physCellHeight);
+	float x1 = floorf(_p1.x / tileWidth), y1 = floorf(_p1.y / tileHeight);
+	float x2 = floorf(_p2.x / tileWidth), y2 = floorf(_p2.y / tileHeight);
 
 	float dx = x2 - x1;
 	float dy = y2 - y1;
@@ -1086,9 +1087,9 @@ bool BaseGameLevel::traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly
 	for(; count > 0; count--){
 		x += dx;
 		y += dy;
-		PhysCell * cell = getPhysCell((int)x, (int)y);
-		if(cell){
-			switch(cell->type){
+		Tile * tile = getTile((int)x, (int)y);
+		if(tile){
+			switch(tile->type){
 			case PHYS_WATER:
 				if(fly){
 					break;
@@ -1103,16 +1104,14 @@ bool BaseGameLevel::traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly
 	return true;
 }
 
-const float PHYS_SCALE = 1.0f / 100.0f;
-
 float toPhysValue(float a)
 {
-	return a * PHYS_SCALE;
+	return a * TO_PHYS_SCALE;
 }
 
 float fromPhysValue(float a)
 {
-	return a / PHYS_SCALE;
+	return a / TO_PHYS_SCALE;
 }
 
 b2Vec2 toPhysVec(const Vector2 &pos)
@@ -1125,30 +1124,30 @@ Vector2 fromPhysVec(const b2Vec2 &pos)
 	return Vector2(fromPhysValue(pos.x), fromPhysValue(pos.y));
 }
 
-int BaseGameLevel::getPhysBlockCount() const
+int BaseGameLevel::getTileAreaCount() const
 {
-	return physBlocks.size();
+	return tileAreas.size();
 }
 
-spPhysBlock BaseGameLevel::getPhysBlock(int i) const
+spTileArea BaseGameLevel::getTileArea(int i) const
 {
-	return physBlocks.at(i);
+	return tileAreas.at(i);
 }
 
-void BaseGameLevel::initPhysBlocks()
+void BaseGameLevel::initTileAreas()
 {
-	OX_ASSERT(physBlocks.size() == 0);
+	OX_ASSERT(tileAreas.size() == 0);
 	// int cellWidth = 16, cellHeight = 16;
-	for(int y = 0; y < physLayerHeight; y++){
-		for(int x = 0; x < physLayerWidth; x++){
-			PhysCell * cell = getPhysCell(x, y);
-			if(cell->type == PHYS_EMPTY || cell->parsed){
+	for(int y = 0; y < tileWorldHeight; y++){
+		for(int x = 0; x < tileWorldWidth; x++){
+			Tile * tile = getTile(x, y);
+			if(tile->type == PHYS_EMPTY || tile->parsed){
 				continue;
 			}
-			int max_x = physLayerWidth-1, max_y = physLayerHeight-1;
+			int max_x = tileWorldWidth-1, max_y = tileWorldHeight-1;
 			for(int ax = x+1; ax <= max_x; ax++){
-				PhysCell * ac = getPhysCell(ax, y);
-				if(ac->parsed || ac->type != cell->type){
+				Tile * ac = getTile(ax, y);
+				if(ac->parsed || ac->type != tile->type){
 					max_x = ax-1;
 					break;
 				}
@@ -1156,8 +1155,8 @@ void BaseGameLevel::initPhysBlocks()
 			for(int ay = y+1; ay <= max_y; ay++){
 				bool isOk = true;
 				for(int ax = x; ax <= max_x; ax++){
-					PhysCell * ac = getPhysCell(ax, ay);
-					if(ac->parsed || ac->type != cell->type){
+					Tile * ac = getTile(ax, ay);
+					if(ac->parsed || ac->type != tile->type){
 						isOk = false;
 						break;
 					}
@@ -1167,31 +1166,31 @@ void BaseGameLevel::initPhysBlocks()
 					break;
 				}
 			}
-			spPhysBlock block = new PhysBlock();
-			block->type = cell->type;
-			block->size = Vector2((float)(max_x - x + 1) * physCellWidth, (float)(max_y - y + 1) * physCellHeight);
-			block->pos = Vector2((float)x * physCellWidth, (float)y * physCellHeight);
-			physBlocks.push_back(block);
+			spTileArea block = new TileArea();
+			block->type = tile->type;
+			block->size = Vector2((float)(max_x - x + 1) * tileWidth, (float)(max_y - y + 1) * tileHeight);
+			block->pos = Vector2((float)x * tileWidth, (float)y * tileHeight);
+			tileAreas.push_back(block);
 			
 			for(int ax = x; ax <= max_x; ax++){
 				for(int ay = y; ay <= max_y; ay++){
-					getPhysCell(ax, ay)->parsed = true;
+					getTile(ax, ay)->parsed = true;
 				}
 			}
 		}
 	}
-	std::vector<spPhysBlock>::iterator it = physBlocks.begin();
-	for(; it != physBlocks.end(); ++it){
-		spPhysBlock physBlock = *it;
+	std::vector<spTileArea>::iterator it = tileAreas.begin();
+	for(; it != tileAreas.end(); ++it){
+		spTileArea tileArea = *it;
 		
 		b2BodyDef bodyDef;
 		bodyDef.type = b2_staticBody;
-		bodyDef.position = toPhysVec(physBlock->pos + physBlock->size / 2);
+		bodyDef.position = toPhysVec(tileArea->pos + tileArea->size / 2);
 
 		b2Body * body = physWorld->CreateBody(&bodyDef);
 
 		b2PolygonShape polyShape;
-		b2Vec2 halfSize = toPhysVec(physBlock->size / 2);
+		b2Vec2 halfSize = toPhysVec(tileArea->size / 2);
 		polyShape.SetAsBox(halfSize.x, halfSize.y);
 
 		b2FixtureDef fixtureDef;
@@ -1200,7 +1199,7 @@ void BaseGameLevel::initPhysBlocks()
 		// b2Fixture * fixture = body->CreateFixture(&polyShape, 0);
 		
 		// b2Filter filter = fixture->GetFilterData();
-		switch(physBlock->type){
+		switch(tileArea->type){
 		case PHYS_WATER:
 			fixtureDef.filter.categoryBits = PHYS_CAT_BIT_WATER;
 			break;
@@ -1537,12 +1536,26 @@ void BaseGameLevel::createPhysicsWorld(const b2Vec2& size)
 	physWorld->SetDestructionListener(this);
 	physWorld->SetContactListener(this);
 
-	physCellWidth = (int)size.x / physLayerWidth;
-	physCellHeight = (int)size.x / physLayerHeight;
+	tileWidth = (int)size.x / tileWorldWidth;
+	tileHeight = (int)size.x / tileWorldHeight;
 
-	initPhysBlocks();
-	// createPhysCellsMipmap();
-	// createPhysCellsMipmap();
+	initTileAreas();
+	// createTilesMipmap();
+	// createTilesMipmap();
+}
+
+void BaseGameLevel::destroyPhysicsWorld()
+{
+	tileAreas.clear();
+	destroyAllBodies();
+	delete physWorld; physWorld = NULL;
+	delete [] tiles; tiles = NULL;
+	accumTimeSec = 0;
+	tilesMipmap = 0;
+	tileWorldWidth = 0;
+	tileWorldHeight = 0;
+	tileWidth = 0;
+	tileHeight = 0;
 }
 
 bool BaseGameLevel::getDebugDraw() const

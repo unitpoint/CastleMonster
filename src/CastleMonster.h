@@ -25,7 +25,7 @@ enum
 	PHYS_CAT_BIT_ALL			= 0xFFFF
 };
 
-enum EPhysCellType
+enum EPhysType
 {
 	PHYS_WATER,
 	PHYS_SOLID,
@@ -34,6 +34,8 @@ enum EPhysCellType
 	PHYS_EMPTY
 };
 
+#define TO_PHYS_SCALE	(1.0f / 10.0f)
+
 #define PHYS_DEF_FIXED_ROTATION		true
 #define PHYS_DEF_LINEAR_DAMPING		0.02f
 #define PHYS_DEF_ANGULAR_DAMPING	0.02f
@@ -41,15 +43,15 @@ enum EPhysCellType
 #define PHYS_DEF_RESTITUTION		0.0f
 #define PHYS_DEF_FRICTION			0.02f
 
-struct PhysCell
+struct Tile
 {
-	EPhysCellType type;
+	EPhysType type;
 	bool parsed;
 	
 	bool mipmapCalculated[2];
 	bool mipmapBlocked[2];
 
-	PhysCell()
+	Tile()
 	{
 		type = PHYS_EMPTY;
 		parsed = false;
@@ -60,24 +62,24 @@ struct PhysCell
 	}
 };
 
-DECLARE_SMART(PhysBlock, spPhysBlock);
-class PhysBlock: public Object
+DECLARE_SMART(TileArea, spTileArea);
+class TileArea: public Object
 {
 public:
-	OS_DECLARE_CLASSINFO(PhysBlock);
+	OS_DECLARE_CLASSINFO(TileArea);
 
 	Vector2 pos;
 	Vector2 size;
-	EPhysCellType type;
+	EPhysType type;
 
-	PhysBlock(): pos(0, 0), size(0, 0)
+	TileArea(): pos(0, 0), size(0, 0)
 	{
 		type = PHYS_EMPTY;
 	}
 
 	Vector2 getPos() const { return pos; }
 	Vector2 getSize() const { return size; }
-	EPhysCellType getType() const { return type; }
+	EPhysType getType() const { return type; }
 };
 
 class BaseEntity;
@@ -246,10 +248,12 @@ public:
 	~BaseGameLevel();
 
 	void createPhysicsWorld(const b2Vec2& size);
+	void destroyPhysicsWorld();
+
 	void drawPhysics();
 
-	void setPhysSize(int width, int height);
-	void setPhysCell(int x, int y, EPhysCellType type);
+	void setTileWorldSize(int width, int height);
+	void setTile(int x, int y, EPhysType type);
 
 	Actor * getView();
 
@@ -263,16 +267,16 @@ public:
 	bool getDebugDraw() const;
 	void setDebugDraw(bool value);
 
-	int getPhysBlockCount() const;
-	spPhysBlock getPhysBlock(int i) const;
+	int getTileAreaCount() const;
+	spTileArea getTileArea(int i) const;
 
 	bool getFindPathInProgress();
 	void updatePath(ObjectScript::UpdateEvent*);
 	// bool findPath(const Vector2& p1, const Vector2& p2, BaseEntity * ent, bool fly, bool allowNotFinishedPath, int callbackOSValueId);
 	void findPath(int x1, int y1, int x2, int y2, bool fly, bool allowNotFinishedPath, int callbackOSValueId);
 	bool traceEntities(BaseEntity * ent1, BaseEntity * ent2, bool fly);
-	void entityPosToPhysCellPos(const Vector2&, int& x, int& y);
-	Vector2 physCellPosToEntityPos(int x, int y);
+	void entityPosToTile(const Vector2&, int& x, int& y);
+	Vector2 tileToEntityPos(int x, int y);
 
 protected:
 	friend struct PathFindThread;
@@ -281,16 +285,16 @@ protected:
 
 	float accumTimeSec;
 	b2World * physWorld;
-	PhysCell * physCells;
-	int physCellsMipmap;
-	int physLayerWidth;
-	int physLayerHeight;
-	int physCellWidth;
-	int physCellHeight;
+	Tile * tiles;
+	int tilesMipmap;
+	int tileWorldWidth;
+	int tileWorldHeight;
+	int tileWidth;
+	int tileHeight;
 
 	PathFindThread pathFindThread;
 
-	std::vector<spPhysBlock> physBlocks;
+	std::vector<spTileArea> tileAreas;
 	std::vector<b2Body*> waitBodiesToDestroy;
 
 	spPhysContact physContactShare;
@@ -298,7 +302,7 @@ protected:
 	int platfromEventId;
 	void onPlatformEvent(Event*);
 
-	void createPhysCellsMipmap();
+	void createTilesMipmap();
 
 	void destroyWaitBodies();
 	void destroyAllBodies();
@@ -306,12 +310,11 @@ protected:
 	void drawPhysShape(b2Fixture* fixture, const b2Transform& xf, const b2Color& color);
 	void drawPhysJoint(b2Joint* joint);
 
-	PhysCell * getPhysCell(int x, int y);
-	void initPhysBlocks();
+	Tile * getTile(int x, int y);
+	void initTileAreas();
 
-	bool isPhysCellBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly);
-	int physCellPosToId(int x, int y);
-	float dist(int x, int y);
+	bool isTileBlocked(int x, int y, int x1, int y1, int x2, int y2, bool fly);
+	int getTileId(int x, int y);
 
 	/// Called when two fixtures begin to touch.
 	void BeginContact(b2Contact* contact);
@@ -393,10 +396,10 @@ struct CtypeValue<b2Vec2>
 	}
 };
 
-OS_DECL_CTYPE_ENUM(EPhysCellType);
+OS_DECL_CTYPE_ENUM(EPhysType);
 OS_DECL_CTYPE_ENUM(SDL_Scancode);
 // OS_DECL_CTYPE_ENUM(SDL_Keycode);
-OS_DECL_OX_CLASS(PhysBlock);
+OS_DECL_OX_CLASS(TileArea);
 OS_DECL_OX_CLASS(PhysContact);
 OS_DECL_OX_CLASS(BaseGameLevel);
 OS_DECL_OX_CLASS(BaseEntity);

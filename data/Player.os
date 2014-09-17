@@ -10,7 +10,7 @@ Player = extends Entity {
 		@attrs {
 			resAnim = res.getResAnim("players/1"),
 			parent = level.layers[LAYER.PLAYER],
-			pos = level.randAreaPos(randItem(level.getPhysTypeBlocks(PHYS_PLAYER_SPAWN))),
+			pos = level.randAreaPos(randItem(level.getTileAreasByType(PHYS_PLAYER_SPAWN))),
 			pivot = vec2(0.5, 0.5),
 		}
 		@physics = {
