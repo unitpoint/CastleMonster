@@ -615,15 +615,17 @@ PathFindThread::PathFindThread()
 
 PathFindThread::~PathFindThread()
 {
+	exit();
 }
 
 void PathFindThread::exit()
 {
-	setState(WAIT_EXIT);
-	while(getState() != EXIT){
-		sleep(10);
+	if(getState() != EXIT){
+		setState(WAIT_EXIT);
+		while(getState() != EXIT){
+			sleep(10);
+		}
 	}
-	int i = 0;
 }
 
 PathFindThread::EState PathFindThread::getState()

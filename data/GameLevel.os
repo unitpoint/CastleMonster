@@ -82,25 +82,27 @@ GameLevel = extends BaseGameLevel {
 			}
 		}
 		
-		var test = Sprite().attrs {
-			resAnim = res.getResAnim("breaks"),
-			priority = 1000,
-			parent = this,
-			pivot = vec2(0.5, 0.5),
-			pos = @size / 2,
-			touchEnabled = false,
+		if(false){
+			var test = Sprite().attrs {
+				resAnim = res.getResAnim("breaks"),
+				priority = 1000,
+				parent = this,
+				pivot = vec2(0.5, 0.5),
+				pos = @size / 2,
+				touchEnabled = false,
+			}
+			test.scale = @height / test.height
+			
+			test = Sprite().attrs {
+				resAnim = res.getResAnim("scratch"),
+				priority = 1000,
+				parent = this,
+				pivot = vec2(0, 0),
+				pos = vec2(0, 0),
+				touchEnabled = false,
+			}
+			test.scale = @height / test.height
 		}
-		test.scale = @height / test.height
-		
-		test = Sprite().attrs {
-			resAnim = res.getResAnim("scratch"),
-			priority = 1000,
-			parent = this,
-			pivot = vec2(0, 0),
-			pos = vec2(0, 0),
-			touchEnabled = false,
-		}
-		test.scale = @height / test.height
 		
 		@initLevelPhysics()
 		
@@ -534,7 +536,7 @@ GameLevel = extends BaseGameLevel {
 			var monster
 			var spawnRandMonster = @wave.phaseParams.monster[0] !== null
 			count = math.min(5, count)
-			/* debug */ count = 1 // count *= 10
+			/* debug */ count *= 10 // count = 1
 			for(var i = 0; i < count; i++){
 				if(i == 0 || spawnRandMonster){
 					if(spawnRandMonster){
