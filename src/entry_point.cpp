@@ -88,6 +88,7 @@ void run()
 	//we could setup initial window size on SDL builds
 	desc.w = 960;
 	desc.h = 640;
+	// desc.fullscreen = true;
 	//marmalade settings could be changed from emulator's menu
 #endif
 	desc.title = "CastleMonster OS2D";
@@ -106,8 +107,6 @@ void run()
 
 	//create and add new DebugActor to root actor as child
 	getStage()->addChild(new DebugActor());
-
-	Matrix view = makeViewMatrix(size.x, size.y);
 
 	viewport = Rect(0, 0, size.x, size.y);
 
