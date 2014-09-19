@@ -823,9 +823,9 @@ void BaseGameLevel::updatePath(ObjectScript::UpdateEvent*)
 		if(pathFindThread.callbackOSValueId){
 			// pathFindThread.state = PathFindThread::PROCESSING;
 			ObjectScript::OS * os = ObjectScript::os;
-			os->pushValueById(pathFindThread.callbackOSValueId);
-			OX_ASSERT(os->isFunction());
 			os->pushNull(); // this
+			os->pushValueById(pathFindThread.callbackOSValueId); // func
+			OX_ASSERT(os->isFunction());
 			if(pathFindThread.finishedPath){
 				os->newArray(pathFindThread.reversePath.size());
 				std::vector<Vector2>::reverse_iterator it = pathFindThread.reversePath.rbegin();
@@ -833,9 +833,9 @@ void BaseGameLevel::updatePath(ObjectScript::UpdateEvent*)
 					ObjectScript::pushCtypeValue(os, *it);
 					os->addProperty(-2);
 				}
-				os->call(1);
+				os->callTF(1);
 			}else{
-				os->call();
+				os->callTF();
 			}
 			os->handleException();
 			unregisterOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
@@ -870,180 +870,12 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 		registerOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
 		return;
 	}
-	os->pushValueById(callbackOSValueId);
-	OX_ASSERT(os->isFunction());
 	os->pushNull(); // this
-	os->call(0);
+	os->pushValueById(callbackOSValueId); // func
+	OX_ASSERT(os->isFunction());
+	os->callTF();
 	os->handleException();
 }
-
-/*
-	// var startTime = cm.getTimeMS();
-				
-	// this.findTiledMapPathTime = this.time;
-	// findPathInProgress = true;
-	// bool fly = ent->getPhysicsBool("fly", false);
-
-	spPathNode node = new PathNode();
-	node->x = x1;
-	node->y = y1;
-	node->closed = true;
-	node->id = getTileId(node->x, node->y);
-	node->weightH = dist(x2 - node->x, y2 - node->y);
-	node->weight = node->weightG + node->weightH;
-				
-	typedef std::map<int, spPathNode> PathNodes;
-	PathNodes nodes;
-	PathNodes openNodes;
-	
-	nodes[node->id] = node;
-				
-	int endNodeId = getTileId(x2, y2);
-	spPathNode curNode = node;
-
-	int maxSteps = 500;
-	for(int steps = 0;; steps++){
-		if(curNode->id == endNodeId || steps >= maxSteps){
-			if(curNode->id != endNodeId && !allowNotFinishedPath){
-				break;
-			}
-			float weight = curNode->weight;
-
-			std::vector<Vector2> path;
-			path.push_back(Vector2((float)curNode->x, (float)curNode->y));
-			while(curNode->parent){
-				curNode = curNode->parent; 
-				path.push_back(Vector2((float)curNode->x, (float)curNode->y));
-			}
-			// path.reverse();
-			// var dt = cm.getTimeMS() - startTime;
-			// cm.log("[path] found weight "+cm.round(path[path.length-1].weight, 2)+", nodes "+path.length+", iter "+(iterateNum+1)+", steps "+allSteps+", dt "+cm.round(dt, 2));
-
-			// self.findPathInProgress = false;
-			ObjectScript::OS * os = ObjectScript::os;
-			if(curNode->id != endNodeId && path.size() < 4){
-				os->printf("[path] SKIP weight %.f, len %d, steps %d\n", weight, path.size(), steps);
-				break;
-			}
-			os->printf("[path] found weight %.f, len %d, steps %d\n", weight, path.size(), steps);
-
-			os->pushValueById(callbackOSValueId);
-			OX_ASSERT(os->isFunction());
-			os->pushNull(); // this
-			os->newArray(path.size());
-			std::vector<Vector2>::reverse_iterator it = path.rbegin();
-			for(; it != path.rend(); ++it){
-				ObjectScript::pushCtypeValue(os, *it);
-				os->addProperty(-2);
-			}
-			os->call(1);
-			os->handleException();
-			return true; // path;
-		}
-		spPathNode bestNode = NULL;
-		float bestWeight = FLT_MAX;
-						
-		int curX = curNode->x;
-		int curY = curNode->y;
-						
-		int startX = max(0, curX-1);
-		int endX = min(tileWorldWidth-1, curX+1);
-						
-		int startY = max(0, curY-1);
-		int endY = min(tileWorldHeight-1, curY+1);
-						
-		for(int px = startX; px <= endX; px++){
-			int dx = curX - px;
-			for(int py = startY; py <= endY; py++){
-				int dy = curY - py;
-				if(!(dx | dy)){
-					continue;
-				}
-				int id = getTileId(px, py);
-				if(nodes.find(id) == nodes.end()){
-					if(isTileBlocked(px, py, x1, y1, x2, y2, fly)){
-						continue;
-					}
-					spPathNode node = new PathNode();
-					node->x = px;
-					node->y = py;
-					node->weightG = dist(dx, dy) + curNode->weightG;
-					node->weightH = dist(x2 - px, y2 - py);
-					node->weight = node->weightG + node->weightH;
-					node->id = id;
-					node->closed = false;
-					node->parent = curNode.get();
-									
-					nodes[id] = node;
-					openNodes[id] = node;
-					// cm.log("[path] new node "+gid+", pos "+px+" "+py);
-				}else{
-					if(node->closed){
-						continue;
-					}
-					float weightG = dist(dx, dy) + curNode->weightG;
-					if(node->weightG > weightG){
-						node->weightG = weightG;
-						node->weight = weightG + node->weightH;
-						node->parent = curNode.get();
-						// node.closed = false;
-						// cm.log("[path] node "+node.gid+" => parent "+gid);
-					}							
-				}
-				if(bestWeight > node->weight){
-					bestWeight = node->weight;
-					bestNode = node;
-				}
-			}
-		}
-		if(bestNode){
-			curNode = bestNode; 
-			curNode->closed = true;
-			// delete openNodes[ curNode.gid ];
-			PathNodes::iterator it = openNodes.find(curNode->id);
-			if(it != openNodes.end()) openNodes.erase(it);
-			continue;
-		}
-		if(curNode->parent){
-			int i = 0;
-			do{
-				curNode = curNode->parent;
-			}while(curNode && ++i < 10);
-			if(curNode){
-				continue;
-			}
-		}
-		curNode = NULL;
-		bestWeight = FLT_MAX;
-		PathNodes::iterator it = openNodes.begin();
-		for(; it != openNodes.end(); ++it){
-			spPathNode node = it->second; // openNodes[i];
-			if(bestWeight > node->weight){
-				bestWeight = node->weight;
-				curNode = node;
-			}
-		}
-		if(!curNode){
-			// cm.log("[path] not found");
-			// self.findPathInProgress = false;
-			// callback(false);
-			break;
-		}
-		curNode->closed = true;
-		// delete openNodes[ curNode.gid ];
-		it = openNodes.find(curNode->id);
-		if(it != openNodes.end()) openNodes.erase(it);
-	}
-	// self.findPathInProgress = false;
-	ObjectScript::OS * os = ObjectScript::os;
-	os->pushValueById(callbackOSValueId);
-	OX_ASSERT(os->isFunction());
-	os->pushNull(); // this
-	os->call(0);
-	os->handleException();
-	return false;
-}
-*/
 
 void BaseGameLevel::entityPosToTile(const Vector2& pos, int& x, int& y)
 {
@@ -1460,37 +1292,6 @@ void BaseGameLevel::updatePhysics(float dt)
 			ent->setRotation(body->GetAngle());
 		}
 	}
-
-#if 0
-	ObjectScript::OS * os = ObjectScript::os;
-	b2Contact * c = physWorld->GetContactList();
-	for(; c; c = c->GetNext()){
-		BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
-		if(ent){
-			ObjectScript::pushCtypeValue(os, ent);
-			os->getProperty("onPhysicsContact");
-			OX_ASSERT(os->isFunction());
-			ObjectScript::pushCtypeValue(os, ent); // this
-			ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
-			os->pushNumber(0);
-			os->call(2, 1);
-			if(os->popBool()){
-				continue;
-			}
-		}
-		ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureB()->GetBody()->GetUserData());
-		if(ent){
-			ObjectScript::pushCtypeValue(os, ent);
-			os->getProperty("onPhysicsContact");
-			OX_ASSERT(os->isFunction());
-			ObjectScript::pushCtypeValue(os, ent); // this
-			ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
-			os->pushNumber(1);
-			os->call(2);
-		}
-	}
-	physContactShare->contact = NULL;
-#endif
 }
 
 void BaseGameLevel::BeginContact(b2Contact* c)
@@ -1498,26 +1299,24 @@ void BaseGameLevel::BeginContact(b2Contact* c)
 	ObjectScript::OS * os = ObjectScript::os;
 	BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
 	if(ent){
-		ObjectScript::pushCtypeValue(os, ent);
-		os->getProperty("onPhysicsContact");
-		OX_ASSERT(os->isFunction());
 		ObjectScript::pushCtypeValue(os, ent); // this
+		os->getProperty(-1, "onPhysicsContact"); // func
+		OX_ASSERT(os->isFunction());
 		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
 		os->pushNumber(0);
-		os->call(2, 1);
+		os->callTF(2, 1);
 		if(os->popBool()){
 			return;
 		}
 	}
 	ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureB()->GetBody()->GetUserData());
 	if(ent){
-		ObjectScript::pushCtypeValue(os, ent);
-		os->getProperty("onPhysicsContact");
-		OX_ASSERT(os->isFunction());
 		ObjectScript::pushCtypeValue(os, ent); // this
+		os->getProperty(-1, "onPhysicsContact"); // func
+		OX_ASSERT(os->isFunction());
 		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
 		os->pushNumber(1);
-		os->call(2);
+		os->callTF(2);
 	}
 }
 

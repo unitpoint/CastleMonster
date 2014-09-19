@@ -317,18 +317,18 @@ protected:
 	int getTileId(int x, int y);
 
 	/// Called when two fixtures begin to touch.
-	void BeginContact(b2Contact* contact);
+	void BeginContact(b2Contact* contact); // override b2ContactListener
 
 	/// Called when two fixtures cease to touch.
-	void EndContact(b2Contact* contact);
+	void EndContact(b2Contact* contact); // override b2ContactListener
 
 	/// Called when any joint is about to be destroyed due
 	/// to the destruction of one of its attached bodies.
-	void SayGoodbye(b2Joint* joint);
+	void SayGoodbye(b2Joint* joint); // override b2DestructionListener
 
 	/// Called when any fixture is about to be destroyed due
 	/// to the destruction of its parent body.
-	void SayGoodbye(b2Fixture* fixture);
+	void SayGoodbye(b2Fixture* fixture); // override b2DestructionListener
 };
 
 class KeyboardEvent: public Event
