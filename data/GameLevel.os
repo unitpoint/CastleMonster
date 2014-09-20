@@ -29,16 +29,16 @@ ITEM_TYPE_MEDAL = 8
 			
 GameLevel = extends BaseGameLevel {
 	__object = {
-		wave: {
-			time: 0,
-			num: 0,
-			phase: 0,
-			maxAliveMonsters: 0,
-			completed: false,
-			params: null,
-			phaseParams: null,
-			phaseMonsters: 0,
-			phaseMonstersSpawned: 0
+		wave = {
+			time = 0,
+			num = 0,
+			phase = 0,
+			maxAliveMonsters = 0,
+			completed = false,
+			params = null,
+			phaseParams = null,
+			phaseMonsters = 0,
+			phaseMonstersSpawned = 0
 		},
 		wavePhaseMonstersSpawned = 0,
 		time = 0,
@@ -48,7 +48,8 @@ GameLevel = extends BaseGameLevel {
 		excludedSpawnAreas = [],
 		monsterSide = 0,
 		useMonstersBattle = false,
-		usePathDebug: true,
+		usePathDebug = true,
+		bloodUsedList = [],
 	},
 	
 	__construct = function(p_level, p_invasion, p_day){
@@ -72,7 +73,7 @@ GameLevel = extends BaseGameLevel {
 			pivot = vec2(0, 0),
 			startContentOffs = vec2(0, 0),
 		}
-		@debugDraw = DEBUG // @view must be already created
+		// @debugDraw = DEBUG // @view must be already created
 		
 		@layers = []
 		for(var i = 0; i < LAYER.COUNT; i++){
@@ -497,7 +498,32 @@ GameLevel = extends BaseGameLevel {
 		@deleteEntity(ent)
 	},
 	
-	spawnMonster: function(params, spawnArea){
+	createBlood = function(ent, count, params){
+		for(var i, item in @bloodUsedList){
+			if(@time - item.time > 0.3){
+				delete @bloodUsedList[i]
+				continue
+			}
+			if(item.ent == ent){
+				return
+			}
+		}
+		@bloodUsedList[] = {time = @time, ent = ent}
+		
+		var pos = ent.pos
+		for(var i = 0; i < count; i++){
+			Blood(this, extend({
+				pos = pos,
+			}, params))
+		}
+		var list = @layers[LAYER.BLOOD]
+		while(#list > 100){
+			// print "too many bloods: ${#list}, ${list[0]}"
+			@deleteEntity(list[0])
+		}
+	},
+	
+	spawnMonster = function(params, spawnArea){
 		spawnArea || spawnArea = @findBestSpawnArea()
 		@useMonstersBattle && @monsterSide = (@monsterSide + 1) % 2
 		// print "spawnMonster: ${params}, pos: ${@randAreaPos(spawnArea, -10)}"
@@ -670,6 +696,8 @@ GameLevel = extends BaseGameLevel {
 	},
 	
 	updateCamera: function(ev){
+		@player || return;
+		
 		var idealPos = @size / 2 - @player.pos
 		var pos = @view.pos
 		var move = (idealPos - pos) * 0.25 * ev.dt // (ev.dt * 2)
@@ -736,11 +764,14 @@ GameLevel = extends BaseGameLevel {
 		}
 		
 		@player.update(ev)
-		for(var _, layer in @layers){
+		for(var _, monster in @layers[LAYER.MONSTERS]){
+			monster.update(ev)
+		}
+		/* for(var _, layer in @layers){
 			for(var _, child in layer){
 				"update" in child && child.update(ev)
 			}
-		}
+		} */
 		@updatePhysics(ev.dt)
 		@updateCamera(ev)
 	},

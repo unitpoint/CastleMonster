@@ -280,34 +280,53 @@ void KeyboardEvent::makeStr()
 // =====================================================================
 // =====================================================================
 
-// =====================================================================
-// =====================================================================
-// =====================================================================
+void PhysContact::Data::reset()
+{
+	memset(this, 0, sizeof(*this));
+}
+
+PhysContact * PhysContact::with(const Data& d)
+{
+		data = d;
+		return this;
+}
 
 int PhysContact::getCategoryBits(int i) const 
 {
-	if(contact){
+	OS_ASSERT(i >= 0 && i < 2);
+	if(i >= 0 && i < 2){
+		return data.filter[i].categoryBits;
+	}
+	/* if(contact){
 		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
 		return fixture->GetFilterData().categoryBits;
-	}
+	} */
 	return 0;
 }
 
 BaseEntity * PhysContact::getEntity(int i) const
 {
-	if(contact){
+	OS_ASSERT(i >= 0 && i < 2);
+	if(i >= 0 && i < 2){
+		return data.ent[i];
+	}
+	/* if(contact){
 		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
 		return dynamic_cast<BaseEntity*>((BaseEntity*)fixture->GetBody()->GetUserData());
-	}
-	return 0;
+	} */
+	return NULL;
 }
 
 bool PhysContact::getIsSensor(int i) const
 {
-	if(contact){
+	OS_ASSERT(i >= 0 && i < 2);
+	if(i >= 0 && i < 2){
+		return data.isSensor[i];
+	}
+	/* if(contact){
 		b2Fixture * fixture = i ? contact->GetFixtureB() : contact->GetFixtureA();
 		return fixture->IsSensor();
-	}
+	} */
 	return false;
 }
 
@@ -1154,10 +1173,10 @@ void BaseGameLevel::addEntityPhysicsShapes(BaseEntity * ent)
 				polyShape.SetAsBox(halfSize.x, halfSize.y);
 			}
 		}
-		fixtureDef.density = (os->getProperty(-1, "density"), os->popFloat(PHYS_DEF_DENSITY));
-		fixtureDef.restitution = (os->getProperty(-1, "restitution"), os->popFloat(PHYS_DEF_RESTITUTION));
-		fixtureDef.friction = (os->getProperty(-1, "friction"), os->popFloat(PHYS_DEF_FRICTION));
-		fixtureDef.isSensor = (os->getProperty(-1, "sensor"), os->popBool(false));
+		fixtureDef.density = (os->getProperty(-1, "density"), os->popFloat(ent->getPhysicsFloat("density", PHYS_DEF_DENSITY)));
+		fixtureDef.restitution = (os->getProperty(-1, "restitution"), os->popFloat(ent->getPhysicsFloat("restitution", PHYS_DEF_RESTITUTION)));
+		fixtureDef.friction = (os->getProperty(-1, "friction"), os->popFloat(ent->getPhysicsFloat("friction", PHYS_DEF_FRICTION)));
+		fixtureDef.isSensor = (os->getProperty(-1, "sensor"), os->popBool(ent->getPhysicsBool("sensor", false)));
 		fixtureDef.filter.categoryBits = (os->getProperty(-1, "categoryBits"), os->popInt(ent->getPhysicsInt("categoryBits", fixtureDef.filter.categoryBits)));
 		fixtureDef.filter.maskBits = (os->getProperty(-1, "maskBits"), os->popInt(ent->getPhysicsInt("maskBits", fixtureDef.filter.maskBits)));
 		
@@ -1190,7 +1209,7 @@ void BaseGameLevel::initEntityPhysics(BaseEntity * ent)
 	b2BodyDef bodyDef;
 	bodyDef.type = b2_dynamicBody;
 	bodyDef.position = toPhysVec(ent->getPosition());
-
+	bodyDef.angle = ent->getRotation();
 	bodyDef.fixedRotation = getOSActorPhysicsBool(ent, "fixedRotation", PHYS_DEF_FIXED_ROTATION);
 	bodyDef.linearDamping = getOSActorPhysicsFloat(ent, "linearDamping", PHYS_DEF_LINEAR_DAMPING);
 	bodyDef.angularDamping = getOSActorPhysicsFloat(ent, "angularDamping", PHYS_DEF_ANGULAR_DAMPING);
@@ -1280,6 +1299,7 @@ void BaseGameLevel::updatePhysics(float dt)
 	dt = 1.0f/30.0f;
 	while(accumTimeSec >= dt){ 
 		physWorld->Step(dt, 6, 2);
+		dispatchContacts();
 		accumTimeSec -= dt;
 	}
 
@@ -1294,30 +1314,46 @@ void BaseGameLevel::updatePhysics(float dt)
 	}
 }
 
-void BaseGameLevel::BeginContact(b2Contact* c)
+void BaseGameLevel::dispatchContacts()
 {
 	ObjectScript::OS * os = ObjectScript::os;
-	BaseEntity * ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureA()->GetBody()->GetUserData());
-	if(ent){
-		ObjectScript::pushCtypeValue(os, ent); // this
-		os->getProperty(-1, "onPhysicsContact"); // func
-		OX_ASSERT(os->isFunction());
-		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
-		os->pushNumber(0);
-		os->callTF(2, 1);
-		if(os->popBool()){
-			return;
+	std::vector<PhysContact::Data>::iterator it = physContacts.begin();
+	for(; it != physContacts.end(); ++it){
+		PhysContact::Data& c = *it;
+		if(c.ent[0]){
+			ObjectScript::pushCtypeValue(os, c.ent[0]); // this
+			os->getProperty(-1, "onPhysicsContact"); // func
+			OX_ASSERT(os->isFunction());
+			ObjectScript::pushCtypeValue(os, physContactShare->with(c));
+			os->pushNumber(0);
+			os->callTF(2, 1);
+			if(os->popBool()){
+				return;
+			}
+		}
+		if(c.ent[1]){
+			ObjectScript::pushCtypeValue(os, c.ent[1]); // this
+			os->getProperty(-1, "onPhysicsContact"); // func
+			OX_ASSERT(os->isFunction());
+			ObjectScript::pushCtypeValue(os, physContactShare->with(c));
+			os->pushNumber(1);
+			os->callTF(2);
 		}
 	}
-	ent = dynamic_cast<BaseEntity*>((BaseEntity*)c->GetFixtureB()->GetBody()->GetUserData());
-	if(ent){
-		ObjectScript::pushCtypeValue(os, ent); // this
-		os->getProperty(-1, "onPhysicsContact"); // func
-		OX_ASSERT(os->isFunction());
-		ObjectScript::pushCtypeValue(os, physContactShare->withContact(c));
-		os->pushNumber(1);
-		os->callTF(2);
+	physContactShare->data.reset();
+	physContacts.clear();
+}
+
+void BaseGameLevel::BeginContact(b2Contact* c)
+{
+	PhysContact::Data data;
+	for(int i = 0; i < 2; i++){
+		b2Fixture * fixture = i ? c->GetFixtureB() : c->GetFixtureA();
+		data.ent[i] = dynamic_cast<BaseEntity*>((BaseEntity*)fixture->GetBody()->GetUserData());
+		data.filter[i] = fixture->GetFilterData();
+		data.isSensor[i] = fixture->IsSensor();
 	}
+	physContacts.push_back(data);
 }
 
 void BaseGameLevel::EndContact(b2Contact* contact)

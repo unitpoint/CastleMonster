@@ -14,25 +14,25 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="Файлы исходного кода\Collision">
-      <UniqueIdentifier>{91e1f455-8f96-483a-9793-b1bb74bd1c76}</UniqueIdentifier>
+      <UniqueIdentifier>{78b8f39c-a7d0-4e31-bcdb-00344d773626}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Collision\Shapes">
-      <UniqueIdentifier>{262d4722-73ee-41e9-b775-2a71c7080316}</UniqueIdentifier>
+      <UniqueIdentifier>{d3951d93-c748-47cf-b2f4-d57b54fd0f55}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Common">
-      <UniqueIdentifier>{a4904439-4522-4d5d-9f77-01db397b306a}</UniqueIdentifier>
+      <UniqueIdentifier>{672c32f2-d511-4e94-ae0c-c68654d4405e}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Dynamics">
-      <UniqueIdentifier>{8db9bf7e-3a27-48d8-8ec9-d72f914a4896}</UniqueIdentifier>
+      <UniqueIdentifier>{92851466-38e9-4614-8295-4e2a2c2f9e49}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Dynamics\Contacts">
-      <UniqueIdentifier>{11b94730-ca0f-4acc-91e3-f32fe698c3ad}</UniqueIdentifier>
+      <UniqueIdentifier>{784d9d94-6dfc-4ee1-9e3a-7e7a623525ad}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Dynamics\Joints">
-      <UniqueIdentifier>{2c268765-6ac6-4893-85e1-ca5012bd2283}</UniqueIdentifier>
+      <UniqueIdentifier>{665c59e3-bb93-40ae-9776-b5b5f40644ef}</UniqueIdentifier>
     </Filter>
     <Filter Include="Файлы исходного кода\Rope">
-      <UniqueIdentifier>{c69cdeac-83f3-4f07-ac5c-b6022a3c4d23}</UniqueIdentifier>
+      <UniqueIdentifier>{cb92cce1-2cb9-4815-bbcf-4a175f009b39}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -311,11 +311,11 @@
     <ClInclude Include="..\Box2D\Dynamics\Joints\b2WheelJoint.h">
       <Filter>Файлы исходного кода\Dynamics\Joints</Filter>
     </ClInclude>
-    <ClInclude Include="..\Box2D\Rope\b2Rope.h">
-      <Filter>Файлы исходного кода\Rope</Filter>
-    </ClInclude>
     <ClInclude Include="..\Box2D\Box2D.h">
       <Filter>Файлы исходного кода</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Box2D\Rope\b2Rope.h">
+      <Filter>Файлы исходного кода\Rope</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

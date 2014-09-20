@@ -3,6 +3,9 @@ Player = extends Entity {
 		originSpeed = 120,
 		playerSpeedScale = null,
 		isShooting = false,
+		enemyKilledTime = 0,
+		enemyKilledFastCount = 0,
+		enemyKilledSoundTimer = null,
 	},
 
 	__construct = function(level){
@@ -18,8 +21,8 @@ Player = extends Entity {
 			// density = 1.0,
 			restitution = 0.2,
 			// friction = 1.0,
-			linearDamping = 0.08,
-			stopLinearDamping = 0.03,
+			linearDamping = 0.92,
+			stopLinearDamping = 0.95,
 			// angularDamping = 1.0,
 			categoryBits = PHYS_CAT_BIT_PLAYER,
 			ignoreBits = PHYS_CAT_BIT_PLAYER_FIRE | PHYS_CAT_BIT_BLOOD 
@@ -48,6 +51,9 @@ Player = extends Entity {
 			}*/ ]
 		}
 		level.initEntityPhysics(this)
+		
+		@nextWeapon()
+		
 		@setMaxSpeed(@originSpeed)
 	},
 	
@@ -55,11 +61,11 @@ Player = extends Entity {
 		value || throw "setMaxSpeed with null"
 		var keys = {
 			120 = {
-				linearDamping = 0.04,
+				linearDamping = 0.96,
 				forcePower = 1000 * PLAYER_FORCE_SCALE * 2.0/2,
 			},
 			300 = {
-				linearDamping = 0.08,
+				linearDamping = 0.92,
 				forcePower = 1000 * PLAYER_FORCE_SCALE * 3.0/3,
 			}
 		}
@@ -103,7 +109,7 @@ Player = extends Entity {
 		@physics.maxSpeed = result.speed
 		@physics.forcePower = result.forcePower
 		
-		@linearDamping = 1 - @physics.linearDamping
+		@linearDamping = @physics.linearDamping
 		@stopDampingUpdated = false
 	},
 	
@@ -122,8 +128,8 @@ Player = extends Entity {
 		}
 		if(dir.x != 0 || dir.y != 0){
 			if(@stopDampingUpdated){
-				@linearDamping = 1 - @physics.linearDamping
-				@angularDamping = 1 - @physics.angularDamping
+				@linearDamping = @physics.linearDamping
+				@angularDamping = @physics.angularDamping
 				@stopDampingUpdated = false
 			}
 			
@@ -136,8 +142,8 @@ Player = extends Entity {
 			@applyForce(dir * @physics.forcePower, {maxSpeed = @physics.maxSpeed * #dir})
 		}else{
 			if(!@stopDampingUpdated){
-				@linearDamping = 1 - (@physics.stopLinearDamping || 0.04)
-				@angularDamping = 1 - (@physics.stopAngularDamping || 0.04)
+				@linearDamping = @physics.stopLinearDamping || 0.96
+				@angularDamping = @physics.stopAngularDamping || 0.96
 				@stopDampingUpdated = true
 			}
 		}
@@ -150,11 +156,150 @@ Player = extends Entity {
 		@updateSprite()
 	},
 	
-	onPhysicsContact = function(){
+	onEnemyKilled = function(enemy){
+		if(@level.time - @enemyKilledTime <= 2){
+			@enemyKilledFastCount++
+		}else{
+			@enemyKilledFastCount = 1
+		}
+		@enemyKilledTime = @level.time
+		
+		@removeTimeout(@enemyKilledSoundTimer)
+		@enemyKilledSoundTimer = null
+		
+		if(@enemyKilledFastCount >= 2){
+			enemy.bonusScale = clamp(@enemyKilledFastCount/2, 1, 5)
+			var sound = []
+			if(@enemyKilledFastCount <= 3){
+				sound[] = "amazing"
+				sound[] = "awesome"
+				sound[] = "impressive"
+			}
+			switch(@enemyKilledFastCount){
+			case 3:
+				sound[] = "05kills"
+				break
+			case 4:
+				sound[] = "10kills"
+				break
+			case 5:
+				sound[] = "15kills"
+				break
+			case 6:
+				sound[] = "20kills"
+				break
+			case 7:
+				sound[] = "25kills"
+				break
+			case 8:
+				sound[] = "30kills"
+				break
+			default:
+				sound[] = "30kills"
+				sound[] = "25kills"
+				sound[] = "20kills"
+				break
+			}
+			@enemyKilledSoundTimer = addTimeout(0.5, function(){
+				@level.playSound {
+					actor = "player", channel = "talk", volume = 100,
+					sound = sound,
+					lock_sec = 1
+				}
+			})
+		}else if(math.rand() <= 0.1){
+			@enemyKilledSoundTimer = addTimeout(math.random(0.5, 1), function(){
+				@level.playSound {
+					actor = "player", channel = "talk", volume = 100,
+					sound = ["headshot", "airshot"],
+					lock_sec = math.random(1, 10)
+				}
+			})
+		}
+	},
 	
+	onPhysicsContact = function(contact, i){
+		if(@level.player != this){
+			return
+		}
+		var otherCategoryBits = contact.getCategoryBits(1-i)
+		if((otherCategoryBits & PHYS_CAT_BIT_MONSTER) != 0){
+			var enemy = contact.getEntity(1-i)
+			@onEnemyTouched(enemy)
+		}else if((otherCategoryBits & PHYS_CAT_BIT_POWERUP) != 0){
+			powerup = contact.getEntity(1-i)
+			name = powerup.desc.image.id
+			switch(name){
+			case "money":
+				@onMoneyTouched(powerup)
+				break;
+				
+			case "meat":
+				@onMeatTouched(powerup)
+				break;
+			}
+		}
+	},
+	
+	onEnemyTouched = function(enemy){
+		// if(@time - cm.playerData.damagedTime > 300){
+			@level.createBlood(this, 4, {
+				image = {
+					id = "blood-player"
+				}
+			})
+		// }
+		if(@level.time - playerData.damagedTime > 1){
+			if(playerData.meat > 0 && enemy.desc.health > 0){						
+				var meatCount = math.random(1, math.ceil(enemy.desc.health / 100))
+				playerData.meat = math.floor(math.max(0, playerData.meat - meatCount))
+			}
+			
+			var damage = math.min(playerData.health / 10, math.max(enemy.desc.damage, enemy.desc.health / 5))
+			
+			var playerHealth = playerData.health * playerData.effects.scale.playerHealth
+			var playerArmor = playerData.armor * playerData.effects.scale.playerArmor
+			
+			var armorDamage = clamp(playerArmor - playerData.armorDamaged, 0, damage)
+			playerData.armorDamaged += armorDamage
+			playerData.healthDamaged += damage - armorDamage
+			
+			playerData.damagedTime = @level.time
+			
+			print("Player.onEnemyTouched, damage: ${damage}, armorDamage: ${armorDamage}, playerData.armorDamaged: ${playerData.armorDamaged}, playerData.healthDamaged: ${playerData.healthDamaged}")
+			
+			if(playerData.healthDamaged >= playerHealth){
+				@playDeathSound()
+				@level.deleteEntity(this)
+				@level.player = null
+				
+				var die = Sprite().attrs {
+					resAnim = @resAnim,
+					pos = @pos,
+					parent = @level.layers[LAYER.PLAYER_DIE],
+					resAnimFrameNum = 17,
+				}
+				var dieUpdateHandle = die.addUpdate(0.5, function(){
+					if(@resAnimFrameNum == 19){
+						@removeUpdate(dieUpdateHandle)
+						// @detach()
+						return
+					}
+					@resAnimFrameNum++ 
+				}.bind(this))
+			}
+		}
 	},
 	
 	playFootstepSound = function(){
 	
+	},
+	
+	playDeathSound = function(){
+	
+	},
+	
+	nextWeapon = function(){
+		print "FAKE nextWeapon"
 	},
 }

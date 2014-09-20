@@ -37,8 +37,8 @@ enum EPhysType
 #define TO_PHYS_SCALE	(1.0f / 10.0f)
 
 #define PHYS_DEF_FIXED_ROTATION		true
-#define PHYS_DEF_LINEAR_DAMPING		0.02f
-#define PHYS_DEF_ANGULAR_DAMPING	0.02f
+#define PHYS_DEF_LINEAR_DAMPING		0.98f
+#define PHYS_DEF_ANGULAR_DAMPING	0.98f
 #define PHYS_DEF_DENSITY			1.0f
 #define PHYS_DEF_RESTITUTION		0.0f
 #define PHYS_DEF_FRICTION			0.02f
@@ -90,16 +90,20 @@ class PhysContact: public Object
 public:
 	OS_DECLARE_CLASSINFO(PhysContact);
 
-	b2Contact * contact;
+	struct Data
+	{
+		BaseEntity * ent[2];
+		b2Filter filter[2];
+		bool isSensor[2];
+		
+		Data(){ reset(); }
+		void reset();
+	};
+	Data data;
 
-	PhysContact(){ contact = NULL; }
-	// void reset(){ contact = NULL; }
+	PhysContact(){}
 
-	PhysContact * withContact(b2Contact * c)
-	{ 
-		contact = c;
-		return this;
-	}
+	PhysContact * with(const Data& d);
 
 	int getCategoryBits(int i) const;
 	BaseEntity * getEntity(int i) const;
@@ -281,10 +285,16 @@ public:
 protected:
 	friend struct PathFindThread;
 
+	struct Contact
+	{
+
+	};
+
 	spBox2DDraw debugDraw;
 
 	float accumTimeSec;
 	b2World * physWorld;
+	std::vector<PhysContact::Data> physContacts;
 	Tile * tiles;
 	int tilesMipmap;
 	int tileWorldWidth;
@@ -306,6 +316,7 @@ protected:
 
 	void destroyWaitBodies();
 	void destroyAllBodies();
+	void dispatchContacts();
 
 	void drawPhysShape(b2Fixture* fixture, const b2Transform& xf, const b2Color& color);
 	void drawPhysJoint(b2Joint* joint);

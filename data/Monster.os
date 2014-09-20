@@ -108,7 +108,7 @@ Monster = extends Entity {
 		@pathTime = level.time
 		
 		if(!level.useMonstersBattle){
-			@target = level.player
+			@target = level.player || return;
 		}else{
 			if(level.isEntityDead(@target)){
 				@target = null
@@ -425,8 +425,8 @@ Monster = extends Entity {
 				
 		if(@stopped){
 			if(!@stopDampingUpdated){
-				@linearDamping = 1 - (@desc.physics.stopLinearDamping || 0.02)
-				@angularDamping = 1 - (@desc.physics.stopAngularDamping || 0.02)
+				@linearDamping = @desc.physics.stopLinearDamping || 0.98
+				@angularDamping = @desc.physics.stopAngularDamping || 0.98
 				@stopDampingUpdated = true
 			}
 			// var speed = cm.physics.physVecToView( @physicsBody.GetLinearVelocity() )
@@ -434,8 +434,8 @@ Monster = extends Entity {
 			// cm.applyActorForce(this, force)
 		}else{
 			if(@stopDampingUpdated){
-				@linearDamping = 1 - (@desc.physics.linearDamping || PHYS_DEF_LINEAR_DAMPING)
-				@angularDamping = 1 - (@desc.physics.angularDamping || PHYS_DEF_ANGULAR_DAMPING)
+				@linearDamping = @desc.physics.linearDamping || PHYS_DEF_LINEAR_DAMPING
+				@angularDamping = @desc.physics.angularDamping || PHYS_DEF_ANGULAR_DAMPING
 				@stopDampingUpdated = false
 			}
 		} 
