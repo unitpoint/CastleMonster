@@ -48,7 +48,7 @@ GameLevel = extends BaseGameLevel {
 		excludedSpawnAreas = [],
 		monsterSide = 0,
 		useMonstersBattle = false,
-		usePathDebug = true,
+		usePathDebug = false,
 		bloodUsedList = [],
 		monsterIdleTime = 0,
 		monsterIdleMinDist = 100,
@@ -490,13 +490,13 @@ GameLevel = extends BaseGameLevel {
 		@deleteEntity(ent)
 	},
 	
-	createBlood = function(ent, count, params){
+	createBlood = function(ent, count, params, force){
 		for(var i, item in @bloodUsedList){
 			if(@time - item.time > 0.3){
 				delete @bloodUsedList[i]
 				continue
 			}
-			if(item.ent == ent){
+			if(!force && item.ent == ent){
 				return
 			}
 		}

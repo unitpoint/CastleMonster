@@ -3,7 +3,7 @@ CastleMonster
 
 CastleMonster is opensource old school battle mobile game made with OS2D
 
-[![Opensource CastleMonster example made with OS2D](https://raw.githubusercontent.com/unitpoint/CastleMonster-bin-win/master/CastleMonster-youtube.jpg)](http://www.youtube.com/watch?v=a4afnUWjVR4)
+[![Opensource CastleMonster example made with OS2D](https://raw.githubusercontent.com/unitpoint/CastleMonster-bin-win/master/CastleMonster-youtube.jpg)](http://www.youtube.com/watch?v=YCaGgk8xEKA)
 
 ## Resources
 

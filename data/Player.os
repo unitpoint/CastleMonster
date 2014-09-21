@@ -291,6 +291,11 @@ Player = extends Entity {
 			if(playerData.healthDamaged > playerHealth){
 				@playDeathSound()
 				
+				@level.createBlood(this, 10, {
+					image = {
+						id = "blood-player"
+					}
+				}, true)				
 				var die = Sprite().attrs {
 					resAnim = @resAnim,
 					pos = @pos,
@@ -298,7 +303,12 @@ Player = extends Entity {
 					parent = @level.layers[LAYER.POWERUPS],
 					resAnimFrameNum = 17,
 				}
-				var dieUpdateHandle = die.addUpdate(0.5, function(){
+				die.addTweenAction {
+					duration = 1.4,
+					pos = @pos + @linearVelocity * 1.4,
+					ease = Ease.QUAD_OUT,
+				}
+				var dieUpdateHandle = die.addUpdate(0.5, function(ev){
 					if(die.resAnimFrameNum == 19){
 						die.removeUpdate(dieUpdateHandle)
 						die.addTimeout(10, function(){

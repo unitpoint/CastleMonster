@@ -32,12 +32,12 @@ Blood = extends Entity {
 		@addTweenAction {
 			name = "tween",
 			duration = math.random(3, 7),
-			scale = 1.2,
+			scale = 1.3,
 			opacity = 0.8,
 			ease = Ease.QUAD_OUT,
 		}
 		
-		@addTimeout(math.random(5, 15), function(){
+		@addTimeout(math.random(8, 15), function(){
 			@replaceTweenAction {
 				name = "tween",
 				opacity = 0,
