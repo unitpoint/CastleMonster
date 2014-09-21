@@ -16,40 +16,56 @@ Player = extends Entity {
 			pos = level.randAreaPos(randItem(level.getTileAreasByType(PHYS_PLAYER_SPAWN))),
 			pivot = vec2(0.5, 0.5),
 		}
-		@physics = {
-			// radiusScale = 0.8,
-			// density = 1.0,
-			restitution = 0.2,
-			// friction = 1.0,
-			linearDamping = 0.92,
-			stopLinearDamping = 0.95,
-			// angularDamping = 1.0,
-			categoryBits = PHYS_CAT_BIT_PLAYER,
-			ignoreBits = PHYS_CAT_BIT_PLAYER_FIRE | PHYS_CAT_BIT_BLOOD 
-				| PHYS_CAT_BIT_MONSTER_SPAWN | PHYS_CAT_BIT_MONSTER_AREA 
-				| PHYS_CAT_BIT_PLAYER_SPAWN,
-			
-			minSpeed = 0,
-			maxSpeed = @originSpeed,
-			forcePower = 1000 * PLAYER_FORCE_SCALE * 3.0/3,
-			
-			shapes = [ {						
-				radiusScale = 0.8
-				// widthScale = 0.6,
-				// heightScale = 0.9
-			}, {
-				radiusScale = 2.5,
-				sensor = true,
-				density = 0,
-				categoryBits = PHYS_CAT_BIT_PLAYER_SENSOR,
-				ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_POWERUP
-			} /*, {
-				radiusScale = 8,
-				sensor = true,
-				density = 0,
-				ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_MONSTER
-			}*/ ]
+		var params = {
+			image = {
+				id = "player",
+				imageId = playerData.armorItem.nameId,
+				size = [ 20, 1 ],
+				ms = 200,
+			},
+			sounds = {
+				// pain: [ "player-pain-1", "player-pain-2", "player-pain-3", "player-pain-4", "player-pain-5", "player-pain-6", "player-pain-7", "player-pain-8" ],
+				pain: [ "player2-pain-1", "player2-pain-2", "player2-pain-3", "player2-pain-4", "player2-pain-5", "player2-pain-6", "player2-pain-7", "player2-pain-8" ],
+				death: [ "player-death-1", "player-death-2" ]
+			},		
+			physics = {
+				// radiusScale = 0.8,
+				// density = 1.0,
+				restitution = 0.2,
+				// friction = 1.0,
+				linearDamping = 0.92,
+				stopLinearDamping = 0.95,
+				// angularDamping = 1.0,
+				categoryBits = PHYS_CAT_BIT_PLAYER,
+				ignoreBits = PHYS_CAT_BIT_PLAYER_FIRE | PHYS_CAT_BIT_BLOOD 
+					| PHYS_CAT_BIT_MONSTER_SPAWN | PHYS_CAT_BIT_MONSTER_AREA 
+					| PHYS_CAT_BIT_PLAYER_SPAWN,
+				
+				minSpeed = 0,
+				maxSpeed = @originSpeed,
+				forcePower = 1000 * PLAYER_FORCE_SCALE * 3.0/3,
+				
+				shapes = [ {						
+					radiusScale = 0.8
+					// widthScale = 0.6,
+					// heightScale = 0.9
+				}, {
+					radiusScale = 2.5,
+					sensor = true,
+					density = 0,
+					categoryBits = PHYS_CAT_BIT_PLAYER_SENSOR,
+					ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_POWERUP
+				} /*, {
+					radiusScale = 8,
+					sensor = true,
+					density = 0,
+					ignoreBits = PHYS_CAT_BIT_ALL & ~PHYS_CAT_BIT_MONSTER
+				}*/ ]
+			}
 		}
+		@desc = params
+		@physics = params.physics
+		
 		level.initEntityPhysics(this)
 		
 		@nextWeapon()
@@ -114,8 +130,8 @@ Player = extends Entity {
 	},
 	
 	update = function(ev){
-		if(@level.moveJoystick.active){
-			var dir = (@level.moveJoystick.dir * 2).normalizeToMax(1)
+		if(@level.hud.moveJoystick.active){
+			var dir = (@level.hud.moveJoystick.dir * 2).normalizeToMax(1)
 		}else{
 			var dx, dy = 0, 0
 			if(@level.keyPressed.left) dx--
@@ -242,57 +258,81 @@ Player = extends Entity {
 	},
 	
 	onEnemyTouched = function(enemy){
-		// if(@time - cm.playerData.damagedTime > 300){
-			@level.createBlood(this, 4, {
-				image = {
-					id = "blood-player"
-				}
-			})
-		// }
+		@level.createBlood(this, 4, {
+			image = {
+				id = "blood-player"
+			}
+		})
 		if(@level.time - playerData.damagedTime > 1){
 			if(playerData.meat > 0 && enemy.desc.health > 0){						
 				var meatCount = math.random(1, math.ceil(enemy.desc.health / 100))
 				playerData.meat = math.floor(math.max(0, playerData.meat - meatCount))
 			}
 			
-			var damage = math.min(playerData.health / 10, math.max(enemy.desc.damage, enemy.desc.health / 5))
+			// enemy.desc.damage || throw "damage (${enemy.desc.damage}) is not set of "..enemy.desc.nameId
+			var damage = math.max((enemy.desc.damage || 0), (enemy.desc.health || 0) / 5)
+			damage = math.min(playerData.health * 0.4, damage)
 			
 			var playerHealth = playerData.health * playerData.effects.scale.playerHealth
 			var playerArmor = playerData.armor * playerData.effects.scale.playerArmor
 			
-			var armorDamage = clamp(playerArmor - playerData.armorDamaged, 0, damage)
+			var armorDamage = clamp(playerArmor - playerData.armorDamaged, 0, damage) * 0.9
 			playerData.armorDamaged += armorDamage
 			playerData.healthDamaged += damage - armorDamage
 			
 			playerData.damagedTime = @level.time
 			
-			print("Player.onEnemyTouched, damage: ${damage}, armorDamage: ${armorDamage}, playerData.armorDamaged: ${playerData.armorDamaged}, playerData.healthDamaged: ${playerData.healthDamaged}")
+			if(!playerData.healthDamaged){
+				print "damage: ${damage}, armorDamage: ${armorDamage}, enemy.desc: ${enemy.desc}"
+				throw "!playerData.healthDamaged"
+			}
+			// print("Player.onEnemyTouched, damage: ${damage}, armorDamage: ${armorDamage}, playerData.armorDamaged: ${playerData.armorDamaged}, playerData.healthDamaged: ${playerData.healthDamaged}")
 			
-			if(playerData.healthDamaged >= playerHealth){
+			if(playerData.healthDamaged > playerHealth){
 				@playDeathSound()
-				@level.deleteEntity(this)
-				@level.player = null
 				
 				var die = Sprite().attrs {
 					resAnim = @resAnim,
 					pos = @pos,
-					parent = @level.layers[LAYER.PLAYER_DIE],
+					pivot = vec2(0.5, 0.5),
+					parent = @level.layers[LAYER.POWERUPS],
 					resAnimFrameNum = 17,
 				}
 				var dieUpdateHandle = die.addUpdate(0.5, function(){
-					if(@resAnimFrameNum == 19){
-						@removeUpdate(dieUpdateHandle)
-						// @detach()
+					if(die.resAnimFrameNum == 19){
+						die.removeUpdate(dieUpdateHandle)
+						die.addTimeout(10, function(){
+							die.addTweenAction {
+								duration = 5,
+								opacity = 0,
+								detachTarget = true,
+							}
+						})
 						return
 					}
-					@resAnimFrameNum++ 
-				}.bind(this))
+					die.resAnimFrameNum++ 
+				})
+				
+				@level.deleteEntity(this)
+				@level.player = null
 			}
 		}
 	},
 	
 	playFootstepSound = function(){
 	
+	},
+	
+	playPainSound = function(){
+		// cm.log("playPainSound", this.desc.sounds.pain);
+		@level.playSound {
+			actor = @desc.image.id, 
+			channel = 'pain', 
+			volume = 100, 
+			sound = @desc.sounds.pain
+		}
+		
+		@level.hud.onPain(); // playerFace.sprite.setAnimationImageIndex( [2] );
 	},
 	
 	playDeathSound = function(){

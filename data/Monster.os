@@ -67,7 +67,7 @@ Monster = extends Entity {
 			}
 		}, params)
 		
-		print "spawnMonster: ${params}"
+		// print "spawnMonster: ${params}"
 		
 		@initEntity(params)
 		
@@ -232,7 +232,7 @@ Monster = extends Entity {
 		if(newIndex !== null){
 			if(newIndex >= @path.length){
 				@path = false
-				print("[path] finished")
+				// print("[path] finished")
 				return false
 			}
 			@pathIndex = newIndex
@@ -557,12 +557,11 @@ Monster = extends Entity {
 		}
 		
 		var target = @target || level.player
-		var targetPos = target.pos
 		var monsterPos = @pos
-		var targetDir =	targetPos - monsterPos
+		var targetDir =	target.pos - monsterPos
 		var dist = #targetDir
 		if(dist < waveParams.monsterFireMinDistance){
-			print("[monster fire] skipped due to dist "..math.round(dist).." < "..waveParams.monsterFireMinDistance)
+			// print("[monster fire] skipped due to dist "..math.round(dist).." < "..waveParams.monsterFireMinDistance)
 			return
 		}
 		
