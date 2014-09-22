@@ -30,6 +30,13 @@ LevelHud = extends Actor {
 			pos = vec2(0, @height),
 		}
 		
+		@fireJoystick = Joystick().attrs {
+			// priority = 0,
+			parent = this,
+			pivot = vec2(1.25, 1.25),
+			pos = vec2(@width, @height),
+		}
+		
 		var pad = 2
 		@face = Sprite().attrs {
 			resAnim = res.get("player-hud-face"),
