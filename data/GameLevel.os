@@ -682,7 +682,7 @@ GameLevel = extends BaseGameLevel {
 						}
 					)
 			}
-			if((count - stepCount) > 0){
+			if(count - stepCount > 0){
 				@addTimeout(dt, function(){ animMeat(count - stepCount, maxStepCount, dt, callback) })
 			}
 		}
@@ -713,7 +713,7 @@ GameLevel = extends BaseGameLevel {
 						}
 					);
 			}
-			if((count - stepCount) > 0){
+			if(count - stepCount > 0){
 				@addTimeout(dt, function(){ animMoney(count - stepCount, maxStepCount, dt, callback) })
 			}
 		}
