@@ -11,6 +11,7 @@ LOCAL_SRC_FILES += ../../../../../objectscript/src/os-heap.cpp
 LOCAL_SRC_FILES += ../../../../../objectscript/src/ext-datetime/os-datetime.cpp
 LOCAL_SRC_FILES += ../../../../../objectscript/src/EaseFunction.cpp
 LOCAL_SRC_FILES += ../../../../../objectscript/src/ox-binder.cpp
+LOCAL_SRC_FILES += ../../../../../objectscript/src/ox-sound-binder.cpp
 
 LOCAL_SRC_FILES += ../../../src/example.cpp ../../../src/entry_point.cpp 
 LOCAL_SRC_FILES += ../../../src/CastleMonster.cpp
@@ -27,7 +28,7 @@ LOCAL_SRC_FILES += \
 				$(wildcard $(LOCAL_PATH)/../../../Box2D/Box2D/Rope/*.cpp) \
 				)
 
-LOCAL_STATIC_LIBRARIES := oxygine-framework_static
+LOCAL_STATIC_LIBRARIES := oxygine-framework_static oxygine-sound_static
 LOCAL_SHARED_LIBRARIES := SDL2
 
 LOCAL_CFLAGS += -DOX_WITH_OBJECTSCRIPT
@@ -41,3 +42,4 @@ include $(BUILD_SHARED_LIBRARY)
 
 #import from NDK_MODULE_PATH defined in build.cmd
 $(call import-module, oxygine-framework)
+$(call import-module, oxygine-sound)

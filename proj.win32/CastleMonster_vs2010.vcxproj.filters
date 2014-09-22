@@ -42,12 +42,21 @@
     <ClCompile Include="..\src\Box2DDebugDraw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\objectscript\src\ox-sound-binder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../src/example.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\CastleMonster.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\objectscript\src\ox-sound-binder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\objectscript\src\ox-binder.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

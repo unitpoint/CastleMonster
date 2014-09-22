@@ -857,7 +857,7 @@ void BaseGameLevel::updatePath(ObjectScript::UpdateEvent*)
 				os->callTF();
 			}
 			os->handleException();
-			unregisterOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
+			ObjectScript::unregisterCallback(this, "pathFindThread", pathFindThread.callbackOSValueId);
 			pathFindThread.callbackOSValueId = 0;
 		}
 		pathFindThread.state = PathFindThread::READY_FOR_NEW_TASK;
@@ -886,7 +886,7 @@ void BaseGameLevel::findPath(int x1, int y1, int x2, int y2, bool fly, bool allo
 		pathFindThread.allowNotFinishedPath = allowNotFinishedPath;
 		pathFindThread.callbackOSValueId = callbackOSValueId;
 		pathFindThread.state = PathFindThread::NEW_TASK;
-		registerOSCallback(this, (intptr_t)this, pathFindThread.callbackOSValueId);
+		ObjectScript::registerCallback(this, "pathFindThread", pathFindThread.callbackOSValueId);
 		return;
 	}
 	os->pushNull(); // this

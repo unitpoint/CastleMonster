@@ -2,6 +2,7 @@
 *.suo
 *.opensdf
 *.pyc
+pack_dir.cmd
 
 tools/cache-osc
 
@@ -18,8 +19,8 @@ proj.android/bin
 proj.android/gen
 proj.android/libs
 proj.win32/ipch
-proj.win32/Debug
-proj.win32/Release
+proj.win32/Debug*
+proj.win32/Release*
 
 Box2D/proj.win32/ipch
 Box2D/proj.win32/Debug
