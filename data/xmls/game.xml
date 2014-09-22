@@ -17,6 +17,7 @@
 		<image file="player-hud-armor.png" />
 		<image file="hud-bar-bg.png" />
 		<image file="hud-bar-fill.png" />
+		<image file="aim.png" />
 		
 		<image id="monsters/zmeyacherepaha" file="monsters/zmeyacherepaha.png" cols="20" />
 		<image id="monsters/wood_elf" file="monsters/wood_elf.png" cols="20" />
