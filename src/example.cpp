@@ -10,7 +10,7 @@ void example_preinit()
 	ObjectScript::Oxygine::init();
 }
 
-#ifdef _WIN32
+#ifdef WIN32
 #include <core\STDFileSystem.h>
 file::STDFileSystem extfs(true);
 file::STDFileSystem extfs2(true);
@@ -18,7 +18,7 @@ file::STDFileSystem extfs2(true);
 
 void example_postinit()
 {
-#ifdef _WIN32
+#ifdef WIN32
 	extfs.setPath(file::fs().getFullPath("../data").c_str());
 	file::mount(&extfs);
 	
