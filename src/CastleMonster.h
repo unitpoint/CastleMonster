@@ -1,4 +1,5 @@
 #ifndef __CASTLEMONSTER_H__
+#define __CASTLEMONSTER_H__
 
 #include "oxygine-framework.h"
 #include <ox-binder.h>
@@ -309,9 +310,6 @@ protected:
 
 	spPhysContact physContactShare;
 
-	int platfromEventId;
-	void onPlatformEvent(Event*);
-
 	void createTilesMipmap();
 
 	void destroyWaitBodies();
@@ -340,31 +338,6 @@ protected:
 	/// Called when any fixture is about to be destroyed due
 	/// to the destruction of its parent body.
 	void SayGoodbye(b2Fixture* fixture); // override b2DestructionListener
-};
-
-class KeyboardEvent: public Event
-{
-public:
-	OS_DECLARE_CLASSINFO(KeyboardEvent);
-
-	enum {
-		DOWN = makefourcc('K', 'E', 'D', 'O'),
-		UP = makefourcc('K', 'E', 'U', 'P'),
-		TEXTEDITING = makefourcc('K', 'E', 'T', 'E'),
-		TEXTINPUT = makefourcc('K', 'E', 'T', 'I')
-	};
-
-	SDL_KeyboardEvent key;
-	char str[5];
-
-	KeyboardEvent(int type);
-
-	SDL_Scancode getScancode() const { return key.keysym.scancode; }
-	SDL_Keycode getSym() const { return key.keysym.sym; }
-	int getMod() const { return key.keysym.mod; }
-	
-	void makeStr();
-	const char * getStr() const { return str; }
 };
 
 namespace ObjectScript {
@@ -408,13 +381,10 @@ struct CtypeValue<b2Vec2>
 };
 
 OS_DECL_CTYPE_ENUM(EPhysType);
-OS_DECL_CTYPE_ENUM(SDL_Scancode);
-// OS_DECL_CTYPE_ENUM(SDL_Keycode);
 OS_DECL_OX_CLASS(TileArea);
 OS_DECL_OX_CLASS(PhysContact);
 OS_DECL_OX_CLASS(BaseGameLevel);
 OS_DECL_OX_CLASS(BaseEntity);
-OS_DECL_OX_CLASS(KeyboardEvent);
 
 } // namespace ObjectScript
 

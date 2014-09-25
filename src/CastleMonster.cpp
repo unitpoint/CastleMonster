@@ -49,7 +49,7 @@ static void registerBaseGameGlobals(OS * os)
 	os->setNumbers(nums);
 	os->pop();
 }
-bool __registerBaseGameGlobals = addRegFunc(registerBaseGameGlobals);
+static bool __registerBaseGameGlobals = addRegFunc(registerBaseGameGlobals);
 
 // =====================================================================
 
@@ -117,10 +117,10 @@ static void registerBaseGameLevel(OS * os)
 		def("setTile", &BaseGameLevel::setTile),
 		def("initEntityPhysics", &BaseGameLevel::initEntityPhysics),
 		def("destroyEntityPhysics", &BaseGameLevel::destroyEntityPhysics),
-		DEF_PROP(debugDraw, BaseGameLevel, DebugDraw),
-		DEF_GET(tileAreaCount, BaseGameLevel, TileAreaCount),
+		DEF_PROP("debugDraw", BaseGameLevel, DebugDraw),
+		DEF_GET("tileAreaCount", BaseGameLevel, TileAreaCount),
 		def("getTileArea", &BaseGameLevel::getTileArea),
-		DEF_GET(findPathInProgress, BaseGameLevel, FindPathInProgress),
+		DEF_GET("findPathInProgress", BaseGameLevel, FindPathInProgress),
 		def("updatePath", &BaseGameLevel::updatePath),
 		{"findPath", &Lib::findPath},
 		{"entityPosToTile", &Lib::entityPosToTile},
@@ -133,7 +133,7 @@ static void registerBaseGameLevel(OS * os)
 	};
 	registerOXClass<BaseGameLevel, Actor>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
-bool __registerBaseGameLevel = addRegFunc(registerBaseGameLevel);
+static bool __registerBaseGameLevel = addRegFunc(registerBaseGameLevel);
 
 // =====================================================================
 
@@ -148,9 +148,9 @@ static void registerTileArea(OS * os)
 
 	OS::FuncDef funcs[] = {
 		// def("__newinstance", &Lib::__newinstance),
-		DEF_GET(pos, TileArea, Pos),
-		DEF_GET(size, TileArea, Size),
-		DEF_GET(type, TileArea, Type),
+		DEF_GET("pos", TileArea, Pos),
+		DEF_GET("size", TileArea, Size),
+		DEF_GET("type", TileArea, Type),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -158,7 +158,7 @@ static void registerTileArea(OS * os)
 	};
 	registerOXClass<TileArea, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
-bool __registerTileArea = addRegFunc(registerTileArea);
+static bool __registerTileArea = addRegFunc(registerTileArea);
 
 // =====================================================================
 
@@ -183,7 +183,7 @@ static void registerPhysContact(OS * os)
 	};
 	registerOXClass<PhysContact, Object>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
-bool __registerPhysContact = addRegFunc(registerPhysContact);
+static bool __registerPhysContact = addRegFunc(registerPhysContact);
 
 // =====================================================================
 
@@ -212,10 +212,10 @@ static void registerBaseEntity(OS * os)
 	OS::FuncDef funcs[] = {
 		def("__newinstance", &Lib::__newinstance),
 		{"applyForce", &Lib::applyForce},
-		DEF_PROP(linearVelocity, BaseEntity, LinearVelocity),
-		DEF_GET(isAwake, BaseEntity, IsAwake),
-		DEF_SET(linearDamping, BaseEntity, LinearDamping),
-		DEF_SET(angularDamping, BaseEntity, AngularDamping),
+		DEF_PROP("linearVelocity", BaseEntity, LinearVelocity),
+		DEF_GET("isAwake", BaseEntity, IsAwake),
+		DEF_SET("linearDamping", BaseEntity, LinearDamping),
+		DEF_SET("angularDamping", BaseEntity, AngularDamping),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -223,58 +223,13 @@ static void registerBaseEntity(OS * os)
 	};
 	registerOXClass<BaseEntity, Sprite>(os, funcs, nums, true OS_DBG_FILEPOS);
 }
-bool __registerBaseEntity = addRegFunc(registerBaseEntity);
-
-// =====================================================================
-
-static void registerKeyboardEvent(OS * os)
-{
-	struct Lib {
-		static KeyboardEvent * __newinstance()
-		{
-			return new KeyboardEvent(0);
-		}
-	};
-
-	OS::FuncDef funcs[] = {
-		def("__newinstance", &Lib::__newinstance),
-		DEF_GET(scancode, KeyboardEvent, Scancode),
-		DEF_GET(sym, KeyboardEvent, Sym),
-		DEF_GET(mod, KeyboardEvent, Mod),
-		DEF_GET(str, KeyboardEvent, Str),
-		{}
-	};
-	OS::NumberDef nums[] = {
-		{"DOWN", KeyboardEvent::DOWN},
-		{"UP", KeyboardEvent::UP},
-		{"TEXTEDITING", KeyboardEvent::TEXTEDITING},
-		{"TEXTINPUT", KeyboardEvent::TEXTINPUT},
-#include "KeyboardEventCodes.inc"
-		{}
-	};
-	registerOXClass<KeyboardEvent, Event>(os, funcs, nums, true OS_DBG_FILEPOS);
-}
-bool __registerKeyboardEvent = addRegFunc(registerKeyboardEvent);
+static bool __registerBaseEntity = addRegFunc(registerBaseEntity);
 
 // =====================================================================
 
 }; // namespace ObjectScript
 
 // =====================================================================
-
-KeyboardEvent::KeyboardEvent(int type): Event(type)
-{
-}
-
-void KeyboardEvent::makeStr()
-{
-	int code = key.keysym.sym;
-	str[0] = (char)(code & 0xff);
-	str[1] = (char)((code>>8) & 0xff);
-	str[2] = (char)((code>>16) & 0xff);
-	str[3] = (char)((code>>24) & 0xff);
-	str[4] = '\0';
-}
 
 // =====================================================================
 // =====================================================================
@@ -414,8 +369,6 @@ BaseGameLevel::BaseGameLevel()
 	tileWorldHeight = 0;
 	tileWidth = 0;
 	tileHeight = 0;
-	// findPathInProgress = false;
-	platfromEventId = Input::instance.addEventListener(Input::event_platform, CLOSURE(this, &BaseGameLevel::onPlatformEvent));
 	physContactShare = new PhysContact;
 }
 
@@ -424,41 +377,8 @@ BaseGameLevel::~BaseGameLevel()
 	pathFindThread.exit();
 	debugDraw = NULL;
 	destroyAllBodies();
-	Input::instance.removeEventListener(platfromEventId);
 	delete [] tiles;
 	delete physWorld;
-}
-
-void BaseGameLevel::onPlatformEvent(Event * p_ev)
-{
-	SDL_Event * ev = (SDL_Event*)p_ev->userData;
-	KeyboardEvent keyEvent(0);
-	switch(ev->type){
-	case SDL_KEYDOWN:
-		keyEvent.type = KeyboardEvent::DOWN;
-		keyEvent.key = ev->key;
-		break;
-
-	case SDL_KEYUP:
-		keyEvent.type = KeyboardEvent::UP;
-		keyEvent.key = ev->key;
-		break;
-
-	case SDL_TEXTEDITING:
-		keyEvent.type = KeyboardEvent::TEXTEDITING;
-		keyEvent.key = ev->key;
-		break;
-
-	case SDL_TEXTINPUT:
-		keyEvent.type = KeyboardEvent::TEXTINPUT;
-		keyEvent.key = ev->key;
-		break;
-
-	default:					
-		return;
-	}
-	keyEvent.makeStr();
-	dispatchEvent(&keyEvent);
 }
 
 void BaseGameLevel::setTileWorldSize(int width, int height)

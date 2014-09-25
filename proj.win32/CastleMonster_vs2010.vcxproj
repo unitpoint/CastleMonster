@@ -86,7 +86,10 @@
     <ClCompile Include="../src/example.cpp" />
     <ClCompile Include="..\..\..\objectscript\src\EaseFunction.cpp" />
     <ClCompile Include="..\..\..\objectscript\src\ext-datetime\os-datetime.cpp" />
-    <ClCompile Include="..\..\..\objectscript\src\objectscript.cpp" />
+    <ClCompile Include="..\..\..\objectscript\src\objectscript.cpp">
+      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Speed</FavorSizeOrSpeed>
+      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NoListing</AssemblerOutput>
+    </ClCompile>
     <ClCompile Include="..\..\..\objectscript\src\os-heap.cpp" />
     <ClCompile Include="..\..\..\objectscript\src\ox-binder.cpp" />
     <ClCompile Include="..\..\..\objectscript\src\ox-sound-binder.cpp" />

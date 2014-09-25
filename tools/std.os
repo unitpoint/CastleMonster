@@ -10,6 +10,14 @@ function __get(name){
 	throw "unknown class or global property \"${name}\""
 }
 
+function printBackTrace(skipFuncs){
+	for(var i, t in arrayOf(skipFuncs) || debugBackTrace((skipFuncs || 0) + 1)){ // skip printBackTrace
+		printf("#${i} ${t.file}%s: %s, args: ${t.arguments}\n",
+			t.line > 0 ? "(${t.line},${t.pos})" : "",
+			t.object && t.object !== _G ? "{${typeOf(t.object)}#${t.object.__id}}.${t.func.__name}" : t.func.__name)
+	}
+}
+
 function assert(a, message){
 	return a || throw(message || "assert failed")
 }
@@ -22,17 +30,25 @@ function evalEnv(str, env){
 	return compileText(str).applyEnv(env || _G, null, ...)
 }
 
-function delegateWithArgs(self, func){
-	var args = ...
-	return function(){ return func.apply(self, args) }
-}
-
 function delegate(self, func){
+	var args = ...
+	if(#args == 0){
 	return function(){ return func.apply(self, arguments) }
+}
+	return function(){ 
+		if(#arguments == 0){
+			return func.apply(self, args)
+		}
+		return func.apply(self, [].merge(args, arguments))
+	}
 }
 
 function Function.bind(self){
-	return delegate(self, this);
+	var args = ...
+	if(#args == 0){
+		return delegate(self, this)
+	}
+	return delegate.apply(_E, [self, this].merge(args))
 }
 
 function toArray(a){
@@ -337,22 +353,6 @@ function String.switchToIconv(){
 	String.__len = String.lenIconv
 	String.find = String.findIconv
 	String.sub = String.subIconv
-}
-
-var originExtends = __extends
-function __extends(proto, newClass){
-	newClass = originExtends(proto, newClass)
-	if(typeOf(proto) === "userdata" && !newClass.getProperty("__newinstance")){
-		function newClass.__newinstance(){
-			var obj = proto.__newinstance()
-			obj.prototype = this
-			__initnewinstance(obj)
-			obj.__construct.apply(obj, arguments)
-			return obj
-		}
-	}
-	// print "extends: ${newClass} from ${newClass.prototype}"
-	return newClass
 }
 
 function Object.attrs(attrs){

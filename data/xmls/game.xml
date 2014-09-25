@@ -10,6 +10,7 @@
 		<image id="players/4" file="players/4.png" cols="20" />
 		<image file="blood-player.png" cols="4" rows="4" />
 		<image file="blood-monster.png" cols="4" rows="4" />
+		<image file="blood-2.png" cols="2" rows="2" />
 		<image file="breaks.png" />
 		<image file="scratch.png" />
 		<image file="dot.png" />

@@ -163,8 +163,8 @@ GameLevel = extends BaseGameLevel {
 					}
 				}
 			}.bind(this)
-			@addEventListener(KeyboardEvent.DOWN, keyboardEvent)
-			@addEventListener(KeyboardEvent.UP, keyboardEvent)
+			stage.addEventListener(KeyboardEvent.DOWN, keyboardEvent)
+			stage.addEventListener(KeyboardEvent.UP, keyboardEvent)
 
 			var aim = Sprite().attrs {
 				resAnim = res.get("aim"),
@@ -575,11 +575,15 @@ GameLevel = extends BaseGameLevel {
 				pos = pos,
 			}, params))
 		}
-		var list = @layers[LAYER.BLOOD]
-		while(#list > 100){
+		var list = @layers[LAYER.BLOOD].childrenList
+		var count, maxCount = #list, 200
+		for(var i = count - maxCount - 1; i >= 0; i--){
+			list[i].fadeOut()
+		}
+		/* while(#list > 10){
 			// print "too many bloods: ${#list}, ${list[0]}"
 			@deleteEntity(list[0])
-		}
+		} */
 	},
 	
 	spawnMonster = function(params, spawnArea){
