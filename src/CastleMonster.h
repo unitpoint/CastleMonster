@@ -375,7 +375,7 @@ struct CtypeValue<b2Vec2>
 		os->pushGlobals();
 		os->pushNumber(p.x);
 		os->pushNumber(p.y);
-		os->call(2, 1);
+		os->callFT(2, 1);
 		os->handleException();
 	}
 };
