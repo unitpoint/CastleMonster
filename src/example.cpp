@@ -44,7 +44,7 @@ void example_init()
 void example_update()
 {
 #if defined WIN32 && !defined OS_DEBUG
-	sleep(10);
+	// sleep(10);
 #endif
 	SoundSystem::instance->update();
 }
